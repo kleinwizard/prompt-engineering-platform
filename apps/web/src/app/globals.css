@@ -1,0 +1,199 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 84% 4.9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 0.5rem;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 84% 4.9%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 94.1%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  .workspace-layout {
+    @apply grid grid-cols-12 gap-4 h-screen overflow-hidden;
+  }
+
+  .workspace-panel {
+    @apply bg-card border rounded-lg shadow-sm overflow-hidden;
+  }
+
+  .prompt-editor {
+    @apply w-full min-h-[200px] p-4 border rounded-md resize-none focus:ring-2 focus:ring-primary focus:border-transparent;
+  }
+
+  .coach-bubble {
+    @apply relative bg-primary text-primary-foreground p-3 rounded-lg shadow-lg;
+  }
+
+  .coach-bubble::after {
+    @apply absolute top-4 -left-2 w-0 h-0 border-t-8 border-b-8 border-r-8;
+    content: '';
+    border-color: transparent hsl(var(--primary)) transparent transparent;
+  }
+
+  .skill-meter {
+    @apply relative w-full bg-muted rounded-full h-2;
+  }
+
+  .skill-meter-fill {
+    @apply bg-primary h-2 rounded-full transition-all duration-300 ease-out;
+  }
+
+  .template-card {
+    @apply bg-card border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer;
+  }
+
+  .challenge-card {
+    @apply bg-gradient-to-br from-primary/10 to-secondary/10 border border-primary/20 rounded-lg p-6;
+  }
+
+  .badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+
+  .badge-common {
+    @apply bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200;
+  }
+
+  .badge-uncommon {
+    @apply bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-200;
+  }
+
+  .badge-rare {
+    @apply bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-200;
+  }
+
+  .badge-epic {
+    @apply bg-purple-100 text-purple-800 dark:bg-purple-800 dark:text-purple-200;
+  }
+
+  .badge-legendary {
+    @apply bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-200;
+  }
+
+  .syntax-highlight {
+    @apply font-mono text-sm;
+  }
+
+  .syntax-role {
+    @apply text-blue-600 dark:text-blue-400;
+  }
+
+  .syntax-constraint {
+    @apply text-red-600 dark:text-red-400;
+  }
+
+  .syntax-format {
+    @apply text-green-600 dark:text-green-400;
+  }
+
+  .syntax-variable {
+    @apply text-purple-600 dark:text-purple-400;
+  }
+
+  .loading-skeleton {
+    @apply animate-pulse bg-muted rounded;
+  }
+
+  .diff-added {
+    @apply bg-green-50 text-green-900 dark:bg-green-900/20 dark:text-green-100;
+  }
+
+  .diff-removed {
+    @apply bg-red-50 text-red-900 dark:bg-red-900/20 dark:text-red-100;
+  }
+
+  .notification-toast {
+    @apply bg-card border shadow-lg rounded-lg p-4;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .glass {
+    @apply backdrop-blur-md bg-white/80 dark:bg-gray-900/80;
+  }
+
+  .gradient-border {
+    @apply relative;
+  }
+
+  .gradient-border::before {
+    @apply absolute inset-0 rounded-lg p-[1px] bg-gradient-to-r from-primary to-secondary;
+    content: '';
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+  }
+}
