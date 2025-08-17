@@ -5,12 +5,13 @@ import {
   PromptChange, 
   ImprovementMetrics,
   ChangeExplanation,
-  EnhancementLevel
+  EnhancementLevel,
+  ChangeType
 } from '../types';
 import { ComplexityAnalyzer } from '../analyzers/ComplexityAnalyzer';
 import { RulesEngine } from '../rules/RulesEngine';
 import { PromptGenerator } from '../generators/PromptGenerator';
-import { v4 as uuidv4 } from 'uuid';
+// Removed uuid import - using simple ID generator instead
 
 export class PromptImprovementEngine {
   private complexityAnalyzer: ComplexityAnalyzer;
@@ -267,13 +268,13 @@ export class PromptImprovementEngine {
     
     for (const group of changeGroups) {
       changes.push({
-        type: group.type,
+        type: group.type as ChangeType,
         section: group.section,
         original: group.originalText,
         improved: group.improvedText,
         reason: group.reason,
         impact: group.impact,
-        confidence: group.confidence
+        // confidence: group.confidence  // Removed as not part of PromptChange interface
       });
     }
 
@@ -458,7 +459,7 @@ export class PromptImprovementEngine {
       replacement: 'Replaced with more effective phrasing'
     };
 
-    return defaultReasons[changeType] || 'Content improvement';
+    return defaultReasons[changeType as keyof typeof defaultReasons] || 'Content improvement';
   }
 
   private groupDiffChanges(diffResult: DiffResult, ruleResults: any[]): ChangeGroup[] {
@@ -548,7 +549,7 @@ export class PromptImprovementEngine {
       'replacement': 'structure_enhancement'
     };
     
-    return mapping[type] || 'content_improvement';
+    return mapping[type as keyof typeof mapping] || 'content_improvement';
   }
 
   private mergeRelatedGroups(groups: ChangeGroup[]): ChangeGroup[] {

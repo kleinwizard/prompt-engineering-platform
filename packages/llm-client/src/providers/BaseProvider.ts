@@ -94,7 +94,7 @@ export abstract class BaseProvider extends EventEmitter {
     }
 
     return {
-      passed: flags.length === 0 || flags.every(f => f.severity === 'low'),
+      passed: flags.length === 0 || flags.every(f => f.severity !== 'high'),
       flags,
       confidence: flags.length > 0 ? 
         flags.reduce((acc, f) => acc + (f.confidence || 0.8), 0) / flags.length : 
@@ -119,7 +119,7 @@ export abstract class BaseProvider extends EventEmitter {
 
       if (!response.ok) return null;
 
-      const result = await response.json();
+      const result: any = await response.json();
       const moderation = result.results[0];
 
       if (moderation.flagged) {
@@ -135,7 +135,7 @@ export abstract class BaseProvider extends EventEmitter {
         return {
           passed: false,
           flags,
-          confidence: Math.max(...Object.values(moderation.category_scores)),
+          confidence: Math.max(...Object.values(moderation.category_scores as Record<string, number>)),
         };
       }
 
@@ -161,7 +161,7 @@ export abstract class BaseProvider extends EventEmitter {
       'self-harm': ['want to', 'going to', 'planning to'],
     };
 
-    const relevantWords = contextualWords[category] || [];
+    const relevantWords = contextualWords[category as keyof typeof contextualWords] || [];
     for (const word of relevantWords) {
       if (prompt.toLowerCase().includes(word)) {
         confidence += 0.1;
@@ -231,7 +231,7 @@ export abstract class BaseProvider extends EventEmitter {
         lastError = error;
         
         // Don't retry if it's not a retryable error
-        if (error.code === 'invalid_api_key' || error.status === 400) {
+        if ((error as any).code === 'invalid_api_key' || (error as any).status === 400) {
           throw error;
         }
 

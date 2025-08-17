@@ -94,7 +94,9 @@ export interface SafetyCheck {
 }
 
 export interface SafetyFlag {
-  category: 'hate' | 'self-harm' | 'sexual' | 'violence' | 'harassment' | 'illegal';
+  category: 'hate' | 'self-harm' | 'sexual' | 'violence' | 'harassment' | 'illegal' | 'prompt-injection' | 'sexual/minors' | 'privacy' | 'misinformation';
   severity: 'low' | 'medium' | 'high';
   description: string;
+  confidence?: number;
+  context?: string;
 }
