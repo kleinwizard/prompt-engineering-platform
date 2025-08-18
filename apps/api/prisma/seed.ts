@@ -378,11 +378,25 @@ Please use clear visualizations concepts and explain your reasoning for non-tech
     },
   ];
 
+  // Create a system user for official templates
+  const systemUser = await prisma.user.upsert({
+    where: { email: 'system@prompt-platform.com' },
+    update: {},
+    create: {
+      email: 'system@prompt-platform.com',
+      username: 'system',
+      passwordHash: await bcrypt.hash('system-no-login', 12),
+      firstName: 'System',
+      lastName: 'Account',
+      emailVerified: new Date(),
+    },
+  });
+
   for (const template of templates) {
     await prisma.template.create({
       data: {
         ...template,
-        userId: 'system', // We'll create a system user for official templates
+        userId: systemUser.id,
         variables: JSON.stringify(template.variables),
       },
     });

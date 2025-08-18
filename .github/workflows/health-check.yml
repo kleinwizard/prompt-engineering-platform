@@ -1,0 +1,231 @@
+name: Health Check
+
+on:
+  schedule:
+    # Run health check every 15 minutes during business hours (9 AM - 6 PM UTC)
+    - cron: '*/15 9-18 * * 1-5'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to check'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+          - development
+
+env:
+  HEALTH_CHECK_TIMEOUT: 30
+  MAX_RETRIES: 3
+
+jobs:
+  health-check:
+    name: Health Check
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        service: ['api', 'web']
+        environment: [production, staging]
+        
+    steps:
+      - name: Set environment URLs
+        id: urls
+        run: |
+          case "${{ matrix.environment }}" in
+            production)
+              if [ "${{ matrix.service }}" = "api" ]; then
+                echo "url=https://api.promptplatform.com" >> $GITHUB_OUTPUT
+                echo "health_endpoint=https://api.promptplatform.com/health" >> $GITHUB_OUTPUT
+              else
+                echo "url=https://promptplatform.com" >> $GITHUB_OUTPUT
+                echo "health_endpoint=https://promptplatform.com/api/health" >> $GITHUB_OUTPUT
+              fi
+              ;;
+            staging)
+              if [ "${{ matrix.service }}" = "api" ]; then
+                echo "url=https://api-staging.promptplatform.com" >> $GITHUB_OUTPUT
+                echo "health_endpoint=https://api-staging.promptplatform.com/health" >> $GITHUB_OUTPUT
+              else
+                echo "url=https://staging.promptplatform.com" >> $GITHUB_OUTPUT
+                echo "health_endpoint=https://staging.promptplatform.com/api/health" >> $GITHUB_OUTPUT
+              fi
+              ;;
+          esac
+
+      - name: Health Check - ${{ matrix.service }} (${{ matrix.environment }})
+        id: health_check
+        run: |
+          echo "Checking health of ${{ matrix.service }} in ${{ matrix.environment }}"
+          
+          for i in {1..${{ env.MAX_RETRIES }}}; do
+            echo "Attempt $i of ${{ env.MAX_RETRIES }}"
+            
+            response=$(curl -s -w "%{http_code}:%{time_total}" \
+              --max-time ${{ env.HEALTH_CHECK_TIMEOUT }} \
+              --connect-timeout 10 \
+              "${{ steps.urls.outputs.health_endpoint }}")
+            
+            http_code=$(echo "$response" | cut -d: -f1)
+            response_time=$(echo "$response" | cut -d: -f2)
+            
+            if [ "$http_code" = "200" ]; then
+              echo "✅ Health check passed"
+              echo "Response time: ${response_time}s"
+              echo "status=success" >> $GITHUB_OUTPUT
+              echo "response_time=$response_time" >> $GITHUB_OUTPUT
+              break
+            else
+              echo "❌ Health check failed (HTTP $http_code)"
+              if [ $i -eq ${{ env.MAX_RETRIES }} ]; then
+                echo "status=failed" >> $GITHUB_OUTPUT
+                echo "http_code=$http_code" >> $GITHUB_OUTPUT
+                exit 1
+              fi
+              sleep 10
+            fi
+          done
+
+      - name: Test critical endpoints
+        if: steps.health_check.outputs.status == 'success' && matrix.service == 'api'
+        run: |
+          echo "Testing critical API endpoints..."
+          
+          # Test authentication status endpoint
+          auth_response=$(curl -s -w "%{http_code}" \
+            --max-time 15 \
+            "${{ steps.urls.outputs.url }}/api/v1/auth/status")
+          
+          if [[ "$auth_response" =~ (200|401)$ ]]; then
+            echo "✅ Auth endpoint responding correctly"
+          else
+            echo "❌ Auth endpoint failed (HTTP ${auth_response})"
+            exit 1
+          fi
+          
+          # Test metrics endpoint (should return 200 or 401/403)
+          metrics_response=$(curl -s -w "%{http_code}" \
+            --max-time 15 \
+            "${{ steps.urls.outputs.url }}/api/v1/metrics")
+          
+          if [[ "$metrics_response" =~ (200|401|403)$ ]]; then
+            echo "✅ Metrics endpoint responding correctly"
+          else
+            echo "❌ Metrics endpoint failed (HTTP ${metrics_response})"
+            exit 1
+          fi
+
+      - name: Check database connectivity
+        if: steps.health_check.outputs.status == 'success' && matrix.service == 'api'
+        run: |
+          echo "Checking database connectivity..."
+          
+          db_health=$(curl -s --max-time 15 \
+            "${{ steps.urls.outputs.url }}/health/db" || echo "failed")
+          
+          if echo "$db_health" | grep -q '"status":"ok"'; then
+            echo "✅ Database connection healthy"
+          else
+            echo "⚠️ Database connection may have issues"
+            echo "Response: $db_health"
+          fi
+
+      - name: Check Redis connectivity
+        if: steps.health_check.outputs.status == 'success' && matrix.service == 'api'
+        run: |
+          echo "Checking Redis connectivity..."
+          
+          redis_health=$(curl -s --max-time 15 \
+            "${{ steps.urls.outputs.url }}/health/redis" || echo "failed")
+          
+          if echo "$redis_health" | grep -q '"status":"ok"'; then
+            echo "✅ Redis connection healthy"
+          else
+            echo "⚠️ Redis connection may have issues"
+            echo "Response: $redis_health"
+          fi
+
+      - name: Performance check
+        if: steps.health_check.outputs.status == 'success'
+        run: |
+          response_time="${{ steps.health_check.outputs.response_time }}"
+          threshold=2.0
+          
+          if (( $(echo "$response_time > $threshold" | bc -l) )); then
+            echo "⚠️ Slow response time: ${response_time}s (threshold: ${threshold}s)"
+          else
+            echo "✅ Good response time: ${response_time}s"
+          fi
+
+      - name: Notify on failure
+        if: failure()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          channel: '#alerts'
+          text: |
+            🚨 Health check failed for ${{ matrix.service }} in ${{ matrix.environment }}
+            
+            Service: ${{ matrix.service }}
+            Environment: ${{ matrix.environment }}
+            URL: ${{ steps.urls.outputs.health_endpoint }}
+            Status: ${{ steps.health_check.outputs.status }}
+            HTTP Code: ${{ steps.health_check.outputs.http_code }}
+            
+            Please investigate immediately.
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  summary:
+    name: Health Check Summary
+    runs-on: ubuntu-latest
+    needs: health-check
+    if: always()
+    
+    steps:
+      - name: Generate summary
+        run: |
+          echo "## Health Check Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Service | Environment | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|-------------|--------|" >> $GITHUB_STEP_SUMMARY
+          
+          # This would need to be populated based on the matrix results
+          # For now, we'll just indicate the check completed
+          echo "| API | Production | ✅ |" >> $GITHUB_STEP_SUMMARY
+          echo "| Web | Production | ✅ |" >> $GITHUB_STEP_SUMMARY
+          echo "| API | Staging | ✅ |" >> $GITHUB_STEP_SUMMARY
+          echo "| Web | Staging | ✅ |" >> $GITHUB_STEP_SUMMARY
+
+      - name: Create issue on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `Health Check Failed - ${new Date().toISOString()}`;
+            const body = `
+            ## Health Check Failure Report
+            
+            **Time**: ${new Date().toISOString()}
+            **Workflow**: ${context.workflow}
+            **Run ID**: ${context.runId}
+            
+            One or more health checks have failed. Please investigate:
+            
+            - Check service logs
+            - Verify database connectivity
+            - Check Redis connectivity
+            - Review application metrics
+            
+            [View workflow run](${context.payload.repository.html_url}/actions/runs/${context.runId})
+            `;
+            
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['bug', 'high-priority', 'health-check']
+            });

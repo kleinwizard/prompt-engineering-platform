@@ -81,6 +81,33 @@ export class WebSocketGateway implements OnGatewayConnection, OnGatewayDisconnec
         data: { lastActive: new Date() },
       });
 
+      // Notify user's connections
+      this.server.to(`user:${user.id}`).emit('status', {
+        type: 'connected',
+        timestamp: new Date()
+      });
+
+      // Notify friends of online status
+      const friends = await this.prisma.follow.findMany({
+        where: { followingId: user.id },
+        include: { follower: true }
+      });
+
+      for (const friend of friends) {
+        this.server.to(`user:${friend.followerId}`).emit('friend-online', {
+          userId: user.id,
+          username: user.username,
+          timestamp: new Date()
+        });
+      }
+
+      // Track activity
+      await this.gamificationService.trackActivity({
+        userId: user.id,
+        type: 'session_start',
+        timestamp: new Date()
+      });
+
       this.logger.log(`User ${user.username} connected`);
 
       // Notify about connection

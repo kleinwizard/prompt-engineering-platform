@@ -5,6 +5,8 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
 import * as compression from 'compression';
+import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
+import { RequestLoggingInterceptor } from './common/interceptors/request-logging.interceptor';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -19,6 +21,12 @@ async function bootstrap() {
     crossOriginEmbedderPolicy: false,
   }));
   app.use(compression());
+  
+  // Request ID middleware
+  app.use(new RequestIdMiddleware().use);
+  
+  // Global request logging interceptor
+  app.useGlobalInterceptors(new RequestLoggingInterceptor());
 
   // Global validation pipe
   app.useGlobalPipes(new ValidationPipe({
@@ -68,7 +76,7 @@ async function bootstrap() {
     });
   }
 
-  const port = configService.get('PORT', 3000);
+  const port = configService.get('PORT', 3001);
   await app.listen(port);
   
   logger.log(`Application is running on: http://localhost:${port}`);

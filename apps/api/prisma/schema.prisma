@@ -2,7 +2,7 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
   binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
@@ -13,9 +13,9 @@ datasource db {
 
 // User Management
 model User {
-  id            String   @id @default(cuid())
-  email         String   @unique
-  username      String   @unique
+  id            String    @id @default(cuid())
+  email         String    @unique
+  username      String    @unique
   passwordHash  String
   firstName     String?
   lastName      String?
@@ -23,132 +23,137 @@ model User {
   bio           String?
   website       String?
   location      String?
-  timezone      String   @default("UTC")
+  timezone      String    @default("UTC")
   emailVerified DateTime?
-  lastActive    DateTime @default(now())
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  lastActive    DateTime  @default(now())
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   // User preferences
-  preferences   UserPreferences?
-  
+  preferences UserPreferences?
+
   // Authentication
-  accounts      Account[]
-  sessions      Session[]
-  
+  accounts Account[]
+  sessions Session[]
+
   // Core features
-  prompts       Prompt[]
-  templates     Template[]
-  
+  prompts   Prompt[]
+  templates Template[]
+
   // Gamification
-  profile       UserProfile?
-  badges        UserBadge[]
-  achievements  Achievement[]
-  
+  profile      UserProfile?
+  badges       UserBadge[]
+  achievements Achievement[]
+
   // Skills
-  skills        UserSkills?
-  assessments   SkillAssessment[]
-  
+  skills      UserSkills?
+  assessments SkillAssessment[]
+
   // Learning
   lessonProgress LessonProgress[]
   learningPaths  UserLearningPath[]
-  
+
   // Community
-  followers     Follow[] @relation("UserFollows")
-  following     Follow[] @relation("UserFollowers")
+  followers     Follow[]  @relation("UserFollows")
+  following     Follow[]  @relation("UserFollowers")
   likes         Like[]
   comments      Comment[]
-  reports       Report[] @relation("UserReports")
-  reportedItems Report[] @relation("ReportedUser")
-  
+  reports       Report[]  @relation("UserReports")
+  reportedItems Report[]  @relation("ReportedUser")
+
   // Teams
   teamMemberships TeamMember[]
-  ownedTeams      Team[] @relation("TeamOwner")
-  
+  ownedTeams      Team[]       @relation("TeamOwner")
+
   // Notifications
   notifications Notification[]
-  
+
   // Analytics
-  events        AnalyticsEvent[]
-  
+  events AnalyticsEvent[]
+
   // API Keys
-  apiKeys       ApiKey[]
-  
+  apiKeys ApiKey[]
+
   // ========== ENTERPRISE FEATURES ==========
-  
+
   // Enterprise tenant
-  tenantId                String?
-  tenant                  Tenant?                  @relation(fields: [tenantId], references: [id])
-  
+  tenantId String?
+  tenant   Tenant? @relation(fields: [tenantId], references: [id])
+
   // Workflow system
-  workflows               PromptWorkflow[]
-  workflowExecutions      WorkflowExecution[]
-  
+  workflows          PromptWorkflow[]
+  workflowExecutions WorkflowExecution[]
+
   // A/B Testing
-  experiments             PromptExperiment[]
-  experimentResults       PromptExperimentResult[]
-  
+  experiments       PromptExperiment[]
+  experimentResults PromptExperimentResult[]
+
   // Coaching
-  coachPreference         UserCoachPreference?
-  
+  coachPreference UserCoachPreference?
+
   // Certification
-  certifications          UserCertification[]
-  
+  certifications UserCertification[]
+
   // Git system
-  repositories            PromptRepository[]
-  commits                 PromptCommit[]
-  
+  repositories PromptRepository[]
+  commits      PromptCommit[]
+
   // Marketplace
-  marketplaceListings     MarketplaceListing[]     @relation("MarketplaceSeller")
-  marketplacePurchases    MarketplacePurchase[]    @relation("MarketplaceBuyer")
-  marketplaceReviews      MarketplaceReview[]
-  marketplaceEarnings     Float                    @default(0)
-  pendingPayout           Float                    @default(0)
-  
+  marketplaceListings  MarketplaceListing[]  @relation("MarketplaceSeller")
+  marketplacePurchases MarketplacePurchase[] @relation("MarketplaceBuyer")
+  marketplaceReviews   MarketplaceReview[]
+  marketplaceEarnings  Float                 @default(0)
+  pendingPayout        Float                 @default(0)
+
   // Security & Audit
-  auditLogs               AuditLog[]
-  securityScans           SecurityScan[]
-  
+  auditLogs     AuditLog[]
+  securityScans SecurityScan[]
+
   // Performance
-  performanceMetrics      PerformanceMetrics[]
-  
+  performanceMetrics PerformanceMetrics[]
+
   // Custom Models
-  modelRequests           ModelRequest[]
-  
+  modelRequests ModelRequest[]
+
   // Revenue
-  revenueTransactions     RevenueTransaction[]
-  
+  revenueTransactions RevenueTransaction[]
+
+  @@index([email])
+  @@index([username])
+  @@index([lastActive])
+  @@index([tenantId])
+  @@index([createdAt])
   @@map("users")
 }
 
 model UserPreferences {
-  id                    String  @id @default(cuid())
-  userId                String  @unique
-  user                  User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  theme                 String  @default("light") // light, dark, system
-  language              String  @default("en")
-  timezone              String  @default("UTC")
-  
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  theme    String @default("light") // light, dark, system
+  language String @default("en")
+  timezone String @default("UTC")
+
   // Notifications
-  emailNotifications    Boolean @default(true)
-  pushNotifications     Boolean @default(true)
-  weeklyDigest          Boolean @default(true)
-  communityUpdates      Boolean @default(true)
-  
+  emailNotifications Boolean @default(true)
+  pushNotifications  Boolean @default(true)
+  weeklyDigest       Boolean @default(true)
+  communityUpdates   Boolean @default(true)
+
   // Privacy
-  profileVisibility     String  @default("public") // public, followers, private
-  showEmail             Boolean @default(false)
-  showLocation          Boolean @default(true)
-  
+  profileVisibility String  @default("public") // public, followers, private
+  showEmail         Boolean @default(false)
+  showLocation      Boolean @default(true)
+
   // AI Settings
-  defaultModel          String  @default("gpt-4")
-  aiCoachingEnabled     Boolean @default(true)
-  autoImprovement       Boolean @default(true)
-  
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
-  
+  defaultModel      String  @default("gpt-4")
+  aiCoachingEnabled Boolean @default(true)
+  autoImprovement   Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@map("user_preferences")
 }
 
@@ -194,108 +199,121 @@ model VerificationToken {
 
 // Core Prompt System
 model Prompt {
-  id              String   @id @default(cuid())
-  userId          String
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  title           String?
-  originalPrompt  String   @db.Text
-  improvedPrompt  String?  @db.Text
-  output          String?  @db.Text
-  
-  model           String   @default("gpt-4")
-  temperature     Float    @default(0.7)
-  maxTokens       Int      @default(2000)
-  
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title          String?
+  originalPrompt String  @db.Text
+  improvedPrompt String? @db.Text
+  output         String? @db.Text
+
+  model       String @default("gpt-4")
+  temperature Float  @default(0.7)
+  maxTokens   Int    @default(2000)
+
   // Metadata
-  category        String?
-  tags            String[]
-  isPublic        Boolean  @default(false)
-  language        String   @default("en")
-  
+  category String?
+  tags     String[]
+  isPublic Boolean  @default(false)
+  language String   @default("en")
+
   // Metrics
   improvementScore Float?
   executionTime    Int? // milliseconds
   tokenCount       Int?
   cost             Float? // USD
-  
+
   // Engagement
-  views           Int      @default(0)
-  likes           Like[]
-  comments        Comment[]
-  forks           Prompt[] @relation("PromptForks")
-  forkedFrom      Prompt?  @relation("PromptForks", fields: [forkedFromId], references: [id])
-  forkedFromId    String?
-  
+  views        Int       @default(0)
+  likes        Like[]
+  comments     Comment[]
+  forks        Prompt[]  @relation("PromptForks")
+  forkedFrom   Prompt?   @relation("PromptForks", fields: [forkedFromId], references: [id])
+  forkedFromId String?
+
   // Versioning
   version         Int      @default(1)
   parentVersion   Prompt?  @relation("PromptVersions", fields: [parentVersionId], references: [id])
   parentVersionId String?
   childVersions   Prompt[] @relation("PromptVersions")
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // ========== ENTERPRISE FEATURES ==========
-  
+
   // Marketplace
-  marketplaceListings     MarketplaceListing[]
-  
+  marketplaceListings MarketplaceListing[]
+
   // DNA Analysis
-  dna                     PromptDNA?
-  
+  dna PromptDNA?
+
   // Security
-  securityScans           SecurityScan[]
-  
+  securityScans SecurityScan[]
+
   // Performance
-  performanceMetrics      PerformanceMetrics[]
-  
+  performanceMetrics PerformanceMetrics[]
+
+  @@index([userId])
+  @@index([category])
+  @@index([isPublic, createdAt])
+  @@index([improvementScore])
+  @@index([tags])
+  @@index([model])
   @@map("prompts")
 }
 
 // Template System
 model Template {
-  id              String   @id @default(cuid())
-  userId          String
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  title           String
-  description     String?  @db.Text
-  content         String   @db.Text
-  variables       Json     @default("[]") // Array of variable definitions
-  
-  category        String
-  subcategory     String?
-  tags            String[]
-  difficulty      String   @default("beginner") // beginner, intermediate, advanced
-  
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title       String
+  description String? @db.Text
+  content     String  @db.Text
+  variables   Json    @default("[]") // Array of variable definitions
+
+  category    String
+  subcategory String?
+  tags        String[]
+  difficulty  String   @default("beginner") // beginner, intermediate, advanced
+
   // Usage stats
-  usageCount      Int      @default(0)
-  rating          Float    @default(0.0)
-  ratingCount     Int      @default(0)
-  
+  usageCount  Int   @default(0)
+  rating      Float @default(0.0)
+  ratingCount Int   @default(0)
+
   // Visibility
-  isPublic        Boolean  @default(false)
-  isOfficial      Boolean  @default(false)
-  isFeatured      Boolean  @default(false)
-  
+  isPublic   Boolean @default(false)
+  isOfficial Boolean @default(false)
+  isFeatured Boolean @default(false)
+
   // Versioning
-  version         Int      @default(1)
-  changelog       String?  @db.Text
-  
+  version   Int     @default(1)
+  changelog String? @db.Text
+
   // Relations
-  likes           Like[]
-  comments        Comment[]
-  ratings         TemplateRating[]
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
+  likes    Like[]
+  comments Comment[]
+  ratings  TemplateRating[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   // ========== ENTERPRISE FEATURES ==========
-  
+
   // Marketplace
-  marketplaceListings     MarketplaceListing[]
-  
+  marketplaceListings MarketplaceListing[]
+
+  @@index([userId])
+  @@index([category])
+  @@index([isPublic, rating])
+  @@index([isOfficial])
+  @@index([isFeatured])
+  @@index([usageCount])
+  @@index([createdAt])
   @@map("templates")
 }
 
@@ -307,314 +325,316 @@ model TemplateRating {
   rating     Int      @db.SmallInt // 1-5
   review     String?  @db.Text
   createdAt  DateTime @default(now())
-  
+
   @@unique([userId, templateId])
   @@map("template_ratings")
 }
 
 // Gamification System
 model UserProfile {
-  id               String   @id @default(cuid())
-  userId           String   @unique
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   // Points and levels
-  totalPoints      Int      @default(0)
-  weeklyPoints     Int      @default(0)
-  monthlyPoints    Int      @default(0)
-  level            Int      @default(1)
-  experience       Int      @default(0)
-  
+  totalPoints   Int @default(0)
+  weeklyPoints  Int @default(0)
+  monthlyPoints Int @default(0)
+  level         Int @default(1)
+  experience    Int @default(0)
+
   // Streaks
   currentStreak    Int      @default(0)
   longestStreak    Int      @default(0)
   lastActivityDate DateTime @default(now())
-  
+
   // Stats
-  promptsCreated   Int      @default(0)
-  templatesCreated Int      @default(0)
-  challengesWon    Int      @default(0)
-  lessonsCompleted Int      @default(0)
-  
+  promptsCreated   Int @default(0)
+  templatesCreated Int @default(0)
+  challengesWon    Int @default(0)
+  lessonsCompleted Int @default(0)
+
   // Rankings
-  globalRank       Int?
-  weeklyRank       Int?
-  monthlyRank      Int?
-  
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  
+  globalRank  Int?
+  weeklyRank  Int?
+  monthlyRank Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@map("user_profiles")
 }
 
 model Badge {
-  id          String      @id @default(cuid())
-  name        String      @unique
-  slug        String      @unique
-  description String      @db.Text
+  id          String @id @default(cuid())
+  name        String @unique
+  slug        String @unique
+  description String @db.Text
   icon        String
-  category    String      // achievement, skill, special, community
-  rarity      String      @default("common") // common, uncommon, rare, epic, legendary
-  points      Int         @default(0)
-  
+  category    String // achievement, skill, special, community
+  rarity      String @default("common") // common, uncommon, rare, epic, legendary
+  points      Int    @default(0)
+
   // Requirements
-  requirements Json       @default("{}")
-  
+  requirements Json @default("{}")
+
   // Stats
-  earnedCount Int         @default(0)
-  
-  users       UserBadge[]
-  
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  
+  earnedCount Int @default(0)
+
+  users UserBadge[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@map("badges")
 }
 
 model UserBadge {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  badgeId   String
-  badge     Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
-  
-  earnedAt  DateTime @default(now())
-  context   Json?    @default("{}")
-  
+  id      String @id @default(cuid())
+  userId  String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badgeId String
+  badge   Badge  @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  earnedAt DateTime @default(now())
+  context  Json?    @default("{}")
+
   @@unique([userId, badgeId])
   @@map("user_badges")
 }
 
 model Achievement {
-  id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  type        String   // daily_goal, weekly_challenge, milestone
-  category    String   // prompts, learning, community, skills
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type        String // daily_goal, weekly_challenge, milestone
+  category    String // prompts, learning, community, skills
   title       String
   description String?
-  points      Int      @default(0)
-  
-  metadata    Json?    @default("{}")
-  
+  points      Int     @default(0)
+
+  metadata Json? @default("{}")
+
   completedAt DateTime @default(now())
-  
+
   @@map("achievements")
 }
 
 // Skills System
 model Skill {
-  id            String             @id @default(cuid())
-  name          String             @unique
-  slug          String             @unique
-  description   String             @db.Text
-  category      String
-  icon          String?
-  
+  id          String  @id @default(cuid())
+  name        String  @unique
+  slug        String  @unique
+  description String  @db.Text
+  category    String
+  icon        String?
+
   // Assessment criteria
-  rubric        Json               @default("{}")
-  
-  userSkills    UserSkills[]
-  assessments   SkillAssessment[]
-  lessons       Lesson[]
-  
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
-  
+  rubric Json @default("{}")
+
+  userSkills  UserSkills[]
+  assessments SkillAssessment[]
+  lessons     Lesson[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@map("skills")
 }
 
 model UserSkills {
-  id       String @id @default(cuid())
-  userId   String @unique
-  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   // Skill scores (0-100)
-  specificity      Float @default(0)
-  constraints      Float @default(0)
-  structure        Float @default(0)
-  roleDefinition   Float @default(0)
-  outputFormat     Float @default(0)
-  verification     Float @default(0)
-  safety           Float @default(0)
-  
+  specificity    Float @default(0)
+  constraints    Float @default(0)
+  structure      Float @default(0)
+  roleDefinition Float @default(0)
+  outputFormat   Float @default(0)
+  verification   Float @default(0)
+  safety         Float @default(0)
+
   // Overall metrics
-  overallScore     Float @default(0)
-  assessmentCount  Int   @default(0)
-  lastAssessment   DateTime?
-  
-  skills           Json  @default("{}") // Dynamic skill tracking
-  
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  
+  overallScore    Float     @default(0)
+  assessmentCount Int       @default(0)
+  lastAssessment  DateTime?
+
+  skills Json @default("{}") // Dynamic skill tracking
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  Skill     Skill?   @relation(fields: [skillId], references: [id])
+  skillId   String?
+
   @@map("user_skills")
 }
 
 model SkillAssessment {
-  id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  skillId     String
-  skill       Skill    @relation(fields: [skillId], references: [id], onDelete: Cascade)
-  
-  prompt      String   @db.Text
-  response    String   @db.Text
-  scores      Json     @default("{}") // Detailed scoring breakdown
+  id      String @id @default(cuid())
+  userId  String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skillId String
+  skill   Skill  @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  prompt       String @db.Text
+  response     String @db.Text
+  scores       Json   @default("{}") // Detailed scoring breakdown
   overallScore Float
-  
-  feedback    String?  @db.Text
-  suggestions String?  @db.Text
-  
-  createdAt   DateTime @default(now())
-  
+
+  feedback    String? @db.Text
+  suggestions String? @db.Text
+
+  createdAt DateTime @default(now())
+
   @@map("skill_assessments")
 }
 
 // Learning System
 model LearningPath {
-  id            String             @id @default(cuid())
+  id            String @id @default(cuid())
   name          String
-  slug          String             @unique
-  description   String             @db.Text
-  difficulty    String             @default("beginner")
-  estimatedTime Int                // minutes
-  
+  slug          String @unique
+  description   String @db.Text
+  difficulty    String @default("beginner")
+  estimatedTime Int // minutes
+
   // Structure
   lessons       Lesson[]
-  prerequisites String[]           // skill requirements
-  
+  prerequisites String[] // skill requirements
+
   // Stats
-  enrolledCount Int                @default(0)
-  completionRate Float             @default(0)
-  rating        Float              @default(0)
-  
-  isPublished   Boolean            @default(false)
-  
-  users         UserLearningPath[]
-  
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
-  
+  enrolledCount  Int   @default(0)
+  completionRate Float @default(0)
+  rating         Float @default(0)
+
+  isPublished Boolean @default(false)
+
+  users UserLearningPath[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@map("learning_paths")
 }
 
 model Lesson {
-  id             String           @id @default(cuid())
-  pathId         String
-  path           LearningPath     @relation(fields: [pathId], references: [id], onDelete: Cascade)
-  skillId        String?
-  skill          Skill?           @relation(fields: [skillId], references: [id])
-  
-  title          String
-  slug           String
-  description    String?          @db.Text
-  content        String           @db.Text // Markdown content
-  
-  type           String           @default("text") // text, video, interactive, quiz
-  duration       Int              @default(0) // minutes
-  order          Int
-  
+  id      String       @id @default(cuid())
+  pathId  String
+  path    LearningPath @relation(fields: [pathId], references: [id], onDelete: Cascade)
+  skillId String?
+  skill   Skill?       @relation(fields: [skillId], references: [id])
+
+  title       String
+  slug        String
+  description String? @db.Text
+  content     String  @db.Text // Markdown content
+
+  type     String @default("text") // text, video, interactive, quiz
+  duration Int    @default(0) // minutes
+  order    Int
+
   // Interactive elements
-  exercises      Json?            @default("[]")
-  quiz           Json?            @default("{}")
-  
+  exercises Json? @default("[]")
+  quiz      Json? @default("{}")
+
   // Prerequisites
-  prerequisites  String[]
-  
-  progress       LessonProgress[]
-  
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-  
+  prerequisites String[]
+
+  progress LessonProgress[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@unique([pathId, slug])
   @@map("lessons")
 }
 
 model LessonProgress {
-  id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  lessonId    String
-  lesson      Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-  
-  status      String   @default("not_started") // not_started, in_progress, completed
-  progress    Float    @default(0) // 0-100
-  score       Float?   // Quiz score
-  timeSpent   Int      @default(0) // minutes
-  
+  id       String @id @default(cuid())
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lessonId String
+  lesson   Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  status    String @default("not_started") // not_started, in_progress, completed
+  progress  Float  @default(0) // 0-100
+  score     Float? // Quiz score
+  timeSpent Int    @default(0) // minutes
+
   startedAt   DateTime?
   completedAt DateTime?
-  
+
   // Spaced repetition
-  reviewCount Int      @default(0)
+  reviewCount Int       @default(0)
   nextReview  DateTime?
-  difficulty  Float    @default(2.5) // SM-2 algorithm
-  interval    Int      @default(1) // days
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  difficulty  Float     @default(2.5) // SM-2 algorithm
+  interval    Int       @default(1) // days
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@unique([userId, lessonId])
   @@map("lesson_progress")
 }
 
 model UserLearningPath {
-  id           String       @id @default(cuid())
-  userId       String
-  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  pathId       String
-  path         LearningPath @relation(fields: [pathId], references: [id], onDelete: Cascade)
-  
-  status       String       @default("enrolled") // enrolled, in_progress, completed, dropped
-  progress     Float        @default(0) // 0-100
-  
-  enrolledAt   DateTime     @default(now())
-  startedAt    DateTime?
-  completedAt  DateTime?
-  
+  id     String       @id @default(cuid())
+  userId String
+  user   User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pathId String
+  path   LearningPath @relation(fields: [pathId], references: [id], onDelete: Cascade)
+
+  status   String @default("enrolled") // enrolled, in_progress, completed, dropped
+  progress Float  @default(0) // 0-100
+
+  enrolledAt  DateTime  @default(now())
+  startedAt   DateTime?
+  completedAt DateTime?
+
   @@unique([userId, pathId])
   @@map("user_learning_paths")
 }
 
 // Challenge System
 model Challenge {
-  id             String               @id @default(cuid())
-  title          String
-  slug           String               @unique
-  description    String               @db.Text
-  
-  type           String               // daily, weekly, monthly, special
-  category       String               // speed, accuracy, creativity, safety
-  difficulty     String               @default("medium")
-  
+  id          String @id @default(cuid())
+  title       String
+  slug        String @unique
+  description String @db.Text
+
+  type       String // daily, weekly, monthly, special
+  category   String // speed, accuracy, creativity, safety
+  difficulty String @default("medium")
+
   // Challenge details
-  prompt         String               @db.Text
-  requirements   Json                 @default("{}")
-  rubric         Json                 @default("{}")
-  
+  prompt       String @db.Text
+  requirements Json   @default("{}")
+  rubric       Json   @default("{}")
+
   // Timing
-  startDate      DateTime
-  endDate        DateTime
-  
+  startDate DateTime
+  endDate   DateTime
+
   // Rewards
-  points         Int                  @default(100)
-  badgeId        String?
-  
+  points  Int     @default(100)
+  badgeId String?
+
   // Stats
-  participantCount Int                @default(0)
-  submissionCount  Int                @default(0)
-  
-  isActive       Boolean              @default(true)
-  isFeatured     Boolean              @default(false)
-  
-  participants   ChallengeParticipant[]
-  submissions    ChallengeSubmission[]
-  
-  createdAt      DateTime             @default(now())
-  updatedAt      DateTime             @updatedAt
-  
+  participantCount Int @default(0)
+  submissionCount  Int @default(0)
+
+  isActive   Boolean @default(true)
+  isFeatured Boolean @default(false)
+
+  participants ChallengeParticipant[]
+  submissions  ChallengeSubmission[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@map("challenges")
 }
 
@@ -623,9 +643,9 @@ model ChallengeParticipant {
   userId      String
   challengeId String
   challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
-  
-  joinedAt    DateTime  @default(now())
-  
+
+  joinedAt DateTime @default(now())
+
   @@unique([userId, challengeId])
   @@map("challenge_participants")
 }
@@ -635,57 +655,57 @@ model ChallengeSubmission {
   userId      String
   challengeId String
   challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
-  
-  prompt      String    @db.Text
-  output      String    @db.Text
-  
+
+  prompt String @db.Text
+  output String @db.Text
+
   // Scoring
-  score       Float     @default(0)
-  rank        Int?
-  
+  score Float @default(0)
+  rank  Int?
+
   // Metadata
-  model       String
-  tokenCount  Int?
+  model         String
+  tokenCount    Int?
   executionTime Int?
-  
-  isPublic    Boolean   @default(true)
-  
-  submittedAt DateTime  @default(now())
-  
+
+  isPublic Boolean @default(true)
+
+  submittedAt DateTime @default(now())
+
   @@unique([userId, challengeId])
   @@map("challenge_submissions")
 }
 
 // Community System
 model Follow {
-  id          String   @id @default(cuid())
+  id          String @id @default(cuid())
   followerId  String
   followingId String
-  
-  follower    User     @relation("UserFollows", fields: [followerId], references: [id], onDelete: Cascade)
-  following   User     @relation("UserFollowers", fields: [followingId], references: [id], onDelete: Cascade)
-  
-  createdAt   DateTime @default(now())
-  
+
+  follower  User @relation("UserFollows", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("UserFollowers", fields: [followingId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
   @@unique([followerId, followingId])
   @@map("follows")
 }
 
 model Like {
-  id         String   @id @default(cuid())
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   // Polymorphic relationships
   promptId   String?
-  prompt     Prompt?  @relation(fields: [promptId], references: [id], onDelete: Cascade)
+  prompt     Prompt?   @relation(fields: [promptId], references: [id], onDelete: Cascade)
   templateId String?
   template   Template? @relation(fields: [templateId], references: [id], onDelete: Cascade)
   commentId  String?
-  comment    Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
-  
-  createdAt  DateTime @default(now())
-  
+  comment    Comment?  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
   @@unique([userId, promptId])
   @@unique([userId, templateId])
   @@unique([userId, commentId])
@@ -693,159 +713,159 @@ model Like {
 }
 
 model Comment {
-  id         String    @id @default(cuid())
-  userId     String
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  content    String    @db.Text
-  
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  content String @db.Text
+
   // Polymorphic relationships
   promptId   String?
   prompt     Prompt?   @relation(fields: [promptId], references: [id], onDelete: Cascade)
   templateId String?
   template   Template? @relation(fields: [templateId], references: [id], onDelete: Cascade)
-  
+
   // Threading
-  parentId   String?
-  parent     Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
-  replies    Comment[] @relation("CommentReplies")
-  
+  parentId String?
+  parent   Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
+  replies  Comment[] @relation("CommentReplies")
+
   // Engagement
-  likes      Like[]
-  
+  likes Like[]
+
   // Moderation
-  isEdited   Boolean   @default(false)
-  isDeleted  Boolean   @default(false)
-  
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  
+  isEdited  Boolean @default(false)
+  isDeleted Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@map("comments")
 }
 
 model Report {
-  id         String   @id @default(cuid())
+  id         String @id @default(cuid())
   reporterId String
-  reporter   User     @relation("UserReports", fields: [reporterId], references: [id], onDelete: Cascade)
-  
+  reporter   User   @relation("UserReports", fields: [reporterId], references: [id], onDelete: Cascade)
+
   // What's being reported
   reportedUserId String?
-  reportedUser   User?    @relation("ReportedUser", fields: [reportedUserId], references: [id])
+  reportedUser   User?   @relation("ReportedUser", fields: [reportedUserId], references: [id])
   promptId       String?
   templateId     String?
   commentId      String?
-  
-  reason         String   // spam, inappropriate, copyright, other
-  description    String?  @db.Text
-  
-  status         String   @default("pending") // pending, reviewed, resolved, dismissed
-  
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  
+
+  reason      String // spam, inappropriate, copyright, other
+  description String? @db.Text
+
+  status String @default("pending") // pending, reviewed, resolved, dismissed
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@map("reports")
 }
 
 // Team System
 model Team {
-  id          String       @id @default(cuid())
+  id          String  @id @default(cuid())
   name        String
-  slug        String       @unique
-  description String?      @db.Text
+  slug        String  @unique
+  description String? @db.Text
   avatar      String?
-  
-  ownerId     String
-  owner       User         @relation("TeamOwner", fields: [ownerId], references: [id], onDelete: Cascade)
-  
+
+  ownerId String
+  owner   User   @relation("TeamOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
   // Settings
-  isPublic    Boolean      @default(false)
-  allowInvites Boolean     @default(true)
-  maxMembers  Int          @default(50)
-  
+  isPublic     Boolean @default(false)
+  allowInvites Boolean @default(true)
+  maxMembers   Int     @default(50)
+
   // Stats
-  memberCount Int          @default(1)
-  
-  members     TeamMember[]
-  invites     TeamInvite[]
-  
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  
+  memberCount Int @default(1)
+
+  members TeamMember[]
+  invites TeamInvite[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@map("teams")
 }
 
 model TeamMember {
-  id       String   @id @default(cuid())
-  teamId   String
-  team     Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  userId   String
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  role     String   @default("member") // owner, admin, member
-  
+  id     String @id @default(cuid())
+  teamId String
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  role String @default("member") // owner, admin, member
+
   joinedAt DateTime @default(now())
-  
+
   @@unique([teamId, userId])
   @@map("team_members")
 }
 
 model TeamInvite {
-  id       String   @id @default(cuid())
-  teamId   String
-  team     Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  
-  email    String
-  role     String   @default("member")
-  token    String   @unique
-  
+  id     String @id @default(cuid())
+  teamId String
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  email String
+  role  String @default("member")
+  token String @unique
+
   invitedById String
   expiresAt   DateTime
   acceptedAt  DateTime?
-  
-  createdAt   DateTime @default(now())
-  
+
+  createdAt DateTime @default(now())
+
   @@map("team_invites")
 }
 
 // Notification System
 model Notification {
-  id       String   @id @default(cuid())
-  userId   String
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  type     String   // like, comment, follow, badge, achievement, etc.
-  title    String
-  message  String?  @db.Text
-  
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type    String // like, comment, follow, badge, achievement, etc.
+  title   String
+  message String? @db.Text
+
   // Associated data
-  data     Json?    @default("{}")
-  
+  data Json? @default("{}")
+
   // Status
-  isRead   Boolean  @default(false)
-  
+  isRead Boolean @default(false)
+
   createdAt DateTime @default(now())
-  
+
   @@map("notifications")
 }
 
 // Analytics System
 model AnalyticsEvent {
-  id         String   @id @default(cuid())
-  userId     String?
-  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  
-  sessionId  String
-  event      String   // page_view, prompt_created, template_used, etc.
-  
-  properties Json     @default("{}")
-  
+  id     String  @id @default(cuid())
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  sessionId String
+  event     String // page_view, prompt_created, template_used, etc.
+
+  properties Json @default("{}")
+
   // Request context
-  userAgent  String?
-  ip         String?
-  referrer   String?
-  
-  timestamp  DateTime @default(now())
-  
+  userAgent String?
+  ip        String?
+  referrer  String?
+
+  timestamp DateTime @default(now())
+
   @@index([event, timestamp])
   @@index([userId, timestamp])
   @@map("analytics_events")
@@ -853,25 +873,25 @@ model AnalyticsEvent {
 
 // API Key Management
 model ApiKey {
-  id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   name        String
-  key         String   @unique // Hashed
-  permissions Json     @default("[]") // Array of permission strings
-  
+  key         String @unique // Hashed
+  permissions Json   @default("[]") // Array of permission strings
+
   // Usage tracking
-  usageCount  Int      @default(0)
-  lastUsedAt  DateTime?
-  
+  usageCount Int       @default(0)
+  lastUsedAt DateTime?
+
   // Status
-  isActive    Boolean  @default(true)
-  expiresAt   DateTime?
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  isActive  Boolean   @default(true)
+  expiresAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@map("api_keys")
 }
 
@@ -881,20 +901,20 @@ model ApiKey {
 
 // 1. AI-Powered Prompt Workflows
 model PromptWorkflow {
-  id            String               @id @default(cuid())
-  userId        String
-  user          User                 @relation(fields: [userId], references: [id])
-  name          String
-  description   String?
-  tags          String[]
-  isPublic      Boolean              @default(false)
-  nodes         PromptWorkflowNode[]
-  edges         PromptWorkflowEdge[]
-  variables     Json                 @default("{}")
-  runCount      Int                  @default(0)
-  lastRunAt     DateTime?
-  createdAt     DateTime             @default(now())
-  updatedAt     DateTime             @updatedAt
+  id          String               @id @default(cuid())
+  userId      String
+  user        User                 @relation(fields: [userId], references: [id])
+  name        String
+  description String?
+  tags        String[]
+  isPublic    Boolean              @default(false)
+  nodes       PromptWorkflowNode[]
+  edges       PromptWorkflowEdge[]
+  variables   Json                 @default("{}")
+  runCount    Int                  @default(0)
+  lastRunAt   DateTime?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
 
   // Relations
   marketplaceListings MarketplaceListing[]
@@ -904,79 +924,79 @@ model PromptWorkflow {
 }
 
 model PromptWorkflowNode {
-  id          String          @id @default(cuid())
-  workflowId  String
-  workflow    PromptWorkflow  @relation(fields: [workflowId], references: [id], onDelete: Cascade)
-  type        String          // prompt, condition, merge, split, loop, transform
-  position    Json            // {x: number, y: number}
-  data        Json            // node-specific data
-  outputs     Json            @default("[]")
-  createdAt   DateTime        @default(now())
+  id         String         @id @default(cuid())
+  workflowId String
+  workflow   PromptWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  type       String // prompt, condition, merge, split, loop, transform
+  position   Json // {x: number, y: number}
+  data       Json // node-specific data
+  outputs    Json           @default("[]")
+  createdAt  DateTime       @default(now())
 
   @@map("prompt_workflow_nodes")
 }
 
 model PromptWorkflowEdge {
-  id          String          @id @default(cuid())
-  workflowId  String
-  workflow    PromptWorkflow  @relation(fields: [workflowId], references: [id], onDelete: Cascade)
-  sourceId    String
-  targetId    String
-  condition   String?         // JavaScript expression
-  label       String?
+  id         String         @id @default(cuid())
+  workflowId String
+  workflow   PromptWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  sourceId   String
+  targetId   String
+  condition  String? // JavaScript expression
+  label      String?
 
   @@map("prompt_workflow_edges")
 }
 
 model WorkflowExecution {
-  id          String          @id @default(cuid())
+  id          String         @id @default(cuid())
   workflowId  String
-  workflow    PromptWorkflow  @relation(fields: [workflowId], references: [id])
+  workflow    PromptWorkflow @relation(fields: [workflowId], references: [id])
   userId      String
-  user        User            @relation(fields: [userId], references: [id])
+  user        User           @relation(fields: [userId], references: [id])
   inputs      Json
   outputs     Json?
-  status      String          @default("running") // running, completed, failed
+  status      String         @default("running") // running, completed, failed
   error       String?
-  startedAt   DateTime        @default(now())
+  startedAt   DateTime       @default(now())
   completedAt DateTime?
-  duration    Int?            // milliseconds
+  duration    Int? // milliseconds
 
   @@map("workflow_executions")
 }
 
 // 2. A/B Testing Framework
 model PromptExperiment {
-  id              String                    @id @default(cuid())
+  id              String                   @id @default(cuid())
   userId          String
-  user            User                      @relation(fields: [userId], references: [id])
+  user            User                     @relation(fields: [userId], references: [id])
   name            String
   hypothesis      String
-  status          String                    @default("draft") // draft, running, completed, cancelled
+  status          String                   @default("draft") // draft, running, completed, cancelled
   variants        PromptVariant[]
-  metrics         Json                      // {primary: string, secondary: string[]}
+  metrics         Json // {primary: string, secondary: string[]}
   sampleSize      Int
-  confidenceLevel Float                     @default(0.95)
+  confidenceLevel Float                    @default(0.95)
   startedAt       DateTime?
   completedAt     DateTime?
-  winner          String?                   // variant ID
+  winner          String? // variant ID
   results         PromptExperimentResult[]
-  createdAt       DateTime                  @default(now())
-  updatedAt       DateTime                  @updatedAt
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
 
   @@map("prompt_experiments")
 }
 
 model PromptVariant {
-  id            String              @id @default(cuid())
-  experimentId  String
-  experiment    PromptExperiment    @relation(fields: [experimentId], references: [id], onDelete: Cascade)
-  name          String
-  prompt        String              @db.Text
-  allocation    Float               @default(0.5) // traffic percentage
-  impressions   Int                 @default(0)
-  conversions   Int                 @default(0)
-  metrics       Json                @default("{}")
+  id           String           @id @default(cuid())
+  experimentId String
+  experiment   PromptExperiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  name         String
+  prompt       String           @db.Text
+  allocation   Float            @default(0.5) // traffic percentage
+  impressions  Int              @default(0)
+  conversions  Int              @default(0)
+  metrics      Json             @default("{}")
 
   @@map("prompt_variants")
 }
@@ -997,75 +1017,75 @@ model PromptExperimentResult {
 
 // 3. AI Coach Personalities
 model CoachPersonality {
-  id              String                 @id @default(cuid())
-  name            String                 @unique
+  id              String                @id @default(cuid())
+  name            String                @unique
   displayName     String
   avatar          String
   description     String
-  tone            String                 // formal, casual, friendly, strict, analytical
-  responseStyle   Json                   // {brevity: 'concise'|'detailed', examples: boolean, analogies: boolean}
+  tone            String // formal, casual, friendly, strict, analytical
+  responseStyle   Json // {brevity: 'concise'|'detailed', examples: boolean, analogies: boolean}
   specialties     String[]
-  motivationStyle String                 // encouraging, challenging, balanced, tough-love
-  feedbackStyle   Json                   // {positive_first: boolean, directness: 0-1, suggestion_rate: 0-1}
-  personality     Json                   // Full personality configuration
-  isActive        Boolean                @default(true)
-  usageCount      Int                    @default(0)
+  motivationStyle String // encouraging, challenging, balanced, tough-love
+  feedbackStyle   Json // {positive_first: boolean, directness: 0-1, suggestion_rate: 0-1}
+  personality     Json // Full personality configuration
+  isActive        Boolean               @default(true)
+  usageCount      Int                   @default(0)
   preferences     UserCoachPreference[]
 
   @@map("coach_personalities")
 }
 
 model UserCoachPreference {
-  id            String            @id @default(cuid())
-  userId        String            @unique
-  user          User              @relation(fields: [userId], references: [id])
+  id            String           @id @default(cuid())
+  userId        String           @unique
+  user          User             @relation(fields: [userId], references: [id])
   personalityId String
-  personality   CoachPersonality  @relation(fields: [personalityId], references: [id])
-  customization Json?             // User-specific overrides
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
+  personality   CoachPersonality @relation(fields: [personalityId], references: [id])
+  customization Json? // User-specific overrides
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
 
   @@map("user_coach_preferences")
 }
 
 // 4. Certification System
 model PromptCertification {
-  id              String                @id @default(cuid())
-  level           String                // bronze, silver, gold, platinum, master
-  name            String
-  description     String
-  requirements    Json                  // Detailed requirements
-  benefits        Json                  // What users get
-  icon            String
-  color           String
-  sortOrder       Int
-  isActive        Boolean               @default(true)
-  users           UserCertification[]
+  id           String              @id @default(cuid())
+  level        String // bronze, silver, gold, platinum, master
+  name         String
+  description  String
+  requirements Json // Detailed requirements
+  benefits     Json // What users get
+  icon         String
+  color        String
+  sortOrder    Int
+  isActive     Boolean             @default(true)
+  users        UserCertification[]
 
   @@map("prompt_certifications")
 }
 
 model UserCertification {
-  id                String              @id @default(cuid())
-  userId            String
-  user              User                @relation(fields: [userId], references: [id])
-  certificationId   String
-  certification     PromptCertification @relation(fields: [certificationId], references: [id])
-  progress          Json                // Detailed progress tracking
-  status            String              // in_progress, completed, expired
-  startedAt         DateTime            @default(now())
-  completedAt       DateTime?
-  expiresAt         DateTime?
-  certificate       String?             // Certificate ID/URL
-  
+  id              String              @id @default(cuid())
+  userId          String
+  user            User                @relation(fields: [userId], references: [id])
+  certificationId String
+  certification   PromptCertification @relation(fields: [certificationId], references: [id])
+  progress        Json // Detailed progress tracking
+  status          String // in_progress, completed, expired
+  startedAt       DateTime            @default(now())
+  completedAt     DateTime?
+  expiresAt       DateTime?
+  certificate     String? // Certificate ID/URL
+
   @@unique([userId, certificationId])
   @@map("user_certifications")
 }
 
 model CertificationRequirement {
-  id              String   @id @default(cuid())
+  id              String @id @default(cuid())
   certificationId String
-  type            String   // prompt_count, quality_score, peer_review, test, project
+  type            String // prompt_count, quality_score, peer_review, test, project
   metric          String
   target          Float
   description     String
@@ -1075,55 +1095,55 @@ model CertificationRequirement {
 
 // 5. Prompt Git Version Control
 model PromptRepository {
-  id              String            @id @default(cuid())
-  name            String
-  description     String?
-  userId          String
-  user            User              @relation(fields: [userId], references: [id])
-  defaultBranch   String            @default("main")
-  branches        PromptBranch[]
-  commits         PromptCommit[]
-  tags            PromptTag[]
-  isPublic        Boolean           @default(false)
-  stars           Int               @default(0)
-  forks           Int               @default(0)
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
+  id            String         @id @default(cuid())
+  name          String
+  description   String?
+  userId        String
+  user          User           @relation(fields: [userId], references: [id])
+  defaultBranch String         @default("main")
+  branches      PromptBranch[]
+  commits       PromptCommit[]
+  tags          PromptTag[]
+  isPublic      Boolean        @default(false)
+  stars         Int            @default(0)
+  forks         Int            @default(0)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   @@map("prompt_repositories")
 }
 
 model PromptBranch {
-  id              String            @id @default(cuid())
-  repositoryId    String
-  repository      PromptRepository  @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
-  name            String
-  headCommitId    String?
-  headCommit      PromptCommit?     @relation("BranchHead", fields: [headCommitId], references: [id])
-  protected       Boolean           @default(false)
-  createdAt       DateTime          @default(now())
-  
+  id           String           @id @default(cuid())
+  repositoryId String
+  repository   PromptRepository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  name         String
+  headCommitId String?
+  headCommit   PromptCommit?    @relation("BranchHead", fields: [headCommitId], references: [id])
+  protected    Boolean          @default(false)
+  createdAt    DateTime         @default(now())
+
   @@unique([repositoryId, name])
   @@map("prompt_branches")
 }
 
 model PromptCommit {
-  id              String            @id @default(cuid())
-  repositoryId    String
-  repository      PromptRepository  @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
-  message         String
-  content         String            @db.Text
-  diff            Json
-  parentId        String?
-  parent          PromptCommit?     @relation("CommitHistory", fields: [parentId], references: [id])
-  children        PromptCommit[]    @relation("CommitHistory")
-  authorId        String
-  author          User              @relation(fields: [authorId], references: [id])
-  timestamp       DateTime          @default(now())
-  hash            String            @unique
-  
+  id           String           @id @default(cuid())
+  repositoryId String
+  repository   PromptRepository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  message      String
+  content      String           @db.Text
+  diff         Json
+  parentId     String?
+  parent       PromptCommit?    @relation("CommitHistory", fields: [parentId], references: [id])
+  children     PromptCommit[]   @relation("CommitHistory")
+  authorId     String
+  author       User             @relation(fields: [authorId], references: [id])
+  timestamp    DateTime         @default(now())
+  hash         String           @unique
+
   // Relations
-  branches        PromptBranch[]    @relation("BranchHead")
+  branches PromptBranch[] @relation("BranchHead")
 
   @@map("prompt_commits")
 }
@@ -1143,80 +1163,80 @@ model PromptTag {
 
 // 6. Marketplace
 model MarketplaceListing {
-  id              String                  @id @default(cuid())
-  promptId        String?
-  prompt          Prompt?                 @relation(fields: [promptId], references: [id])
-  templateId      String?
-  template        Template?               @relation(fields: [templateId], references: [id])
-  workflowId      String?
-  workflow        PromptWorkflow?         @relation(fields: [workflowId], references: [id])
-  
-  sellerId        String
-  seller          User                    @relation("MarketplaceSeller", fields: [sellerId], references: [id])
-  
-  title           String
-  description     String                  @db.Text
-  category        String
-  tags            String[]
-  
-  price           Float
-  currency        String                  @default("USD")
-  licensingType   String                  // personal, commercial, enterprise
-  
+  id         String          @id @default(cuid())
+  promptId   String?
+  prompt     Prompt?         @relation(fields: [promptId], references: [id])
+  templateId String?
+  template   Template?       @relation(fields: [templateId], references: [id])
+  workflowId String?
+  workflow   PromptWorkflow? @relation(fields: [workflowId], references: [id])
+
+  sellerId String
+  seller   User   @relation("MarketplaceSeller", fields: [sellerId], references: [id])
+
+  title       String
+  description String   @db.Text
+  category    String
+  tags        String[]
+
+  price         Float
+  currency      String @default("USD")
+  licensingType String // personal, commercial, enterprise
+
   // Stats
-  views           Int                     @default(0)
-  purchases       Int                     @default(0)
-  revenue         Float                   @default(0)
-  rating          Float                   @default(0)
-  
+  views         Int   @default(0)
+  purchaseCount Int   @default(0)
+  revenue       Float @default(0)
+  rating        Float @default(0)
+
   // Marketplace features
-  featured        Boolean                 @default(false)
-  verified        Boolean                 @default(false)
-  
-  status          String                  @default("pending") // pending, active, suspended
-  
-  purchases       MarketplacePurchase[]
-  reviews         MarketplaceReview[]
-  
-  createdAt       DateTime                @default(now())
-  updatedAt       DateTime                @updatedAt
+  featured Boolean @default(false)
+  verified Boolean @default(false)
+
+  status String @default("pending") // pending, active, suspended
+
+  purchases MarketplacePurchase[]
+  reviews   MarketplaceReview[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("marketplace_listings")
 }
 
 model MarketplacePurchase {
-  id              String                  @id @default(cuid())
-  listingId       String
-  listing         MarketplaceListing      @relation(fields: [listingId], references: [id])
-  buyerId         String
-  buyer           User                    @relation("MarketplaceBuyer", fields: [buyerId], references: [id])
-  
-  price           Float
-  currency        String
-  licensingType   String
-  
-  transactionId   String                  @unique
-  paymentMethod   String
-  paymentStatus   String                  @default("pending")
-  
-  downloadCount   Int                     @default(0)
-  lastDownload    DateTime?
-  
-  createdAt       DateTime                @default(now())
+  id        String             @id @default(cuid())
+  listingId String
+  listing   MarketplaceListing @relation(fields: [listingId], references: [id])
+  buyerId   String
+  buyer     User               @relation("MarketplaceBuyer", fields: [buyerId], references: [id])
+
+  price         Float
+  currency      String
+  licensingType String
+
+  transactionId String @unique
+  paymentMethod String
+  paymentStatus String @default("pending")
+
+  downloadCount Int       @default(0)
+  lastDownload  DateTime?
+
+  createdAt DateTime @default(now())
 
   @@map("marketplace_purchases")
 }
 
 model MarketplaceReview {
-  id        String              @id @default(cuid())
+  id        String             @id @default(cuid())
   listingId String
-  listing   MarketplaceListing  @relation(fields: [listingId], references: [id])
+  listing   MarketplaceListing @relation(fields: [listingId], references: [id])
   userId    String
-  user      User                @relation(fields: [userId], references: [id])
-  rating    Int                 // 1-5 stars
+  user      User               @relation(fields: [userId], references: [id])
+  rating    Int // 1-5 stars
   review    String?
-  helpful   Int                 @default(0)
-  createdAt DateTime            @default(now())
+  helpful   Int                @default(0)
+  createdAt DateTime           @default(now())
 
   @@unique([listingId, userId])
   @@map("marketplace_reviews")
@@ -1224,24 +1244,24 @@ model MarketplaceReview {
 
 // 7. Enterprise Features
 model Tenant {
-  id                String              @id @default(cuid())
-  name              String
-  domain            String              @unique
-  plan              String              @default("enterprise")
-  settings          Json                @default("{}")
-  dataResidency     String              @default("us-east")
-  
+  id            String @id @default(cuid())
+  name          String
+  domain        String @unique
+  plan          String @default("enterprise")
+  settings      Json   @default("{}")
+  dataResidency String @default("us-east")
+
   // Features
-  customBranding    Json?
-  apiLimits         Json                @default("{}")
-  
-  users             User[]
-  ssoConfigs        SSOConfiguration[]
-  auditLogs         AuditLog[]
-  customModels      CustomModel[]
-  
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
+  customBranding Json?
+  apiLimits      Json  @default("{}")
+
+  users        User[]
+  ssoConfigs   SSOConfiguration[]
+  auditLogs    AuditLog[]
+  customModels CustomModel[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("tenants")
 }
@@ -1250,8 +1270,8 @@ model SSOConfiguration {
   id       String  @id @default(cuid())
   tenantId String
   tenant   Tenant  @relation(fields: [tenantId], references: [id])
-  type     String  // saml, oidc, ldap
-  config   Json    // Provider-specific configuration
+  type     String // saml, oidc, ldap
+  config   Json // Provider-specific configuration
   enabled  Boolean @default(true)
 
   @@map("sso_configurations")
@@ -1269,9 +1289,9 @@ model AuditLog {
   changes    Json?
   ipAddress  String?
   userAgent  String?
-  result     String   // success, failure
+  result     String // success, failure
   metadata   Json?
-  signature  String   // For tamper detection
+  signature  String // For tamper detection
   timestamp  DateTime @default(now())
 
   @@index([action, timestamp])
@@ -1280,75 +1300,75 @@ model AuditLog {
 }
 
 model CustomModel {
-  id                String             @id @default(cuid())
-  tenantId          String
-  tenant            Tenant             @relation(fields: [tenantId], references: [id])
-  name              String
-  description       String?
-  type              String             // api, finetuned, hosted, local
-  provider          String             // openai, anthropic, google, custom
-  endpoint          String
-  authentication    Json               // Encrypted credentials
-  capabilities      Json               // Model capabilities
-  parameters        Json               // Model parameters
-  metadata          Json               @default("{}")
-  isActive          Boolean            @default(true)
-  healthStatus      String             @default("unknown") // healthy, unhealthy, unknown
-  healthDetails     Json?
-  lastHealthCheck   DateTime?
-  lastUsedAt        DateTime?
-  deployments       ModelDeployment[]
-  fineTuningJobs    FineTuningJob[]
-  metrics           ModelMetrics[]
-  requests          ModelRequest[]
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  deletedAt         DateTime?
+  id              String            @id @default(cuid())
+  tenantId        String
+  tenant          Tenant            @relation(fields: [tenantId], references: [id])
+  name            String
+  description     String?
+  type            String // api, finetuned, hosted, local
+  provider        String // openai, anthropic, google, custom
+  endpoint        String
+  authentication  Json // Encrypted credentials
+  capabilities    Json // Model capabilities
+  parameters      Json // Model parameters
+  metadata        Json              @default("{}")
+  isActive        Boolean           @default(true)
+  healthStatus    String            @default("unknown") // healthy, unhealthy, unknown
+  healthDetails   Json?
+  lastHealthCheck DateTime?
+  lastUsedAt      DateTime?
+  deployments     ModelDeployment[]
+  fineTuningJobs  FineTuningJob[]
+  metrics         ModelMetrics[]
+  requests        ModelRequest[]
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  deletedAt       DateTime?
 
   @@map("custom_models")
 }
 
 model ModelDeployment {
-  id                String       @id @default(cuid())
+  id                String         @id @default(cuid())
   tenantId          String
   modelId           String
-  model             CustomModel  @relation(fields: [modelId], references: [id])
+  model             CustomModel    @relation(fields: [modelId], references: [id])
   fineTuningJobId   String?
   fineTuningJob     FineTuningJob? @relation(fields: [fineTuningJobId], references: [id])
-  infrastructure    String       // aws, gcp, azure, on_premise
+  infrastructure    String // aws, gcp, azure, on_premise
   region            String?
   instanceType      String?
   endpoint          String?
-  scaling           Json         // Scaling configuration
-  monitoring        Json         // Monitoring configuration
-  status            String       // deploying, active, inactive, failed
+  scaling           Json // Scaling configuration
+  monitoring        Json // Monitoring configuration
+  status            String // deploying, active, inactive, failed
   deploymentDetails Json?
-  deployedAt        DateTime     @default(now())
+  deployedAt        DateTime       @default(now())
   terminatedAt      DateTime?
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
 
   @@map("model_deployments")
 }
 
 model FineTuningJob {
-  id               String             @id @default(cuid())
-  tenantId         String
-  modelId          String
-  model            CustomModel        @relation(fields: [modelId], references: [id])
-  baseModel        String
-  trainingData     Json               // Training dataset information
-  hyperparameters  Json               // Training hyperparameters
-  status           String             // pending, training, completed, failed, cancelled
-  progress         Int                @default(0)
-  metrics          Json?              // Training metrics
-  estimatedCost    Float
-  actualCost       Float?
-  startedAt        DateTime?
-  completedAt      DateTime?
-  deployments      ModelDeployment[]
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime           @updatedAt
+  id              String            @id @default(cuid())
+  tenantId        String
+  modelId         String
+  model           CustomModel       @relation(fields: [modelId], references: [id])
+  baseModel       String
+  trainingData    Json // Training dataset information
+  hyperparameters Json // Training hyperparameters
+  status          String // pending, training, completed, failed, cancelled
+  progress        Int               @default(0)
+  metrics         Json? // Training metrics
+  estimatedCost   Float
+  actualCost      Float?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  deployments     ModelDeployment[]
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
 
   @@map("fine_tuning_jobs")
 }
@@ -1358,12 +1378,12 @@ model ModelMetrics {
   modelId      String
   model        CustomModel @relation(fields: [modelId], references: [id])
   timestamp    DateTime    @default(now())
-  latency      Float       // Response latency in ms
+  latency      Float // Response latency in ms
   errorCount   Int         @default(0)
   successCount Int         @default(0)
-  tokenUsage   Json?       // Token usage statistics
-  cost         Float?      // Cost for this metric period
-  qualityScore Float?      // Quality score if available
+  tokenUsage   Json? // Token usage statistics
+  cost         Float? // Cost for this metric period
+  qualityScore Float? // Quality score if available
   metadata     Json        @default("{}")
 
   @@index([modelId, timestamp])
@@ -1371,19 +1391,19 @@ model ModelMetrics {
 }
 
 model ModelRequest {
-  id            String      @id @default(cuid())
-  modelId       String
-  model         CustomModel @relation(fields: [modelId], references: [id])
-  userId        String?
-  user          User?       @relation(fields: [userId], references: [id])
-  requestType   String      // completion, chat, embedding
-  inputTokens   Int?
-  outputTokens  Int?
-  cost          Float?
-  latency       Float?      // Response time in ms
-  success       Boolean     @default(true)
-  errorMessage  String?
-  timestamp     DateTime    @default(now())
+  id           String      @id @default(cuid())
+  modelId      String
+  model        CustomModel @relation(fields: [modelId], references: [id])
+  userId       String?
+  user         User?       @relation(fields: [userId], references: [id])
+  requestType  String // completion, chat, embedding
+  inputTokens  Int?
+  outputTokens Int?
+  cost         Float?
+  latency      Float? // Response time in ms
+  success      Boolean     @default(true)
+  errorMessage String?
+  timestamp    DateTime    @default(now())
 
   @@index([modelId, timestamp])
   @@index([userId, timestamp])
@@ -1391,20 +1411,20 @@ model ModelRequest {
 }
 
 model SecurityScan {
-  id                String   @id @default(cuid())
-  userId            String
-  user              User     @relation(fields: [userId], references: [id])
-  tenantId          String?
-  promptId          String?
-  prompt            Prompt?  @relation(fields: [promptId], references: [id])
-  originalPrompt    String   @db.Text
-  riskScore         Float
-  vulnerabilities   Json     // Array of security threats
-  recommendations   Json     // Array of recommendations
-  sanitizedPrompt   String?  @db.Text
-  scanDuration      Int      // Scan duration in ms
-  complianceIssues  Json     @default("[]")
-  timestamp         DateTime @default(now())
+  id               String   @id @default(cuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id])
+  tenantId         String?
+  promptId         String?
+  prompt           Prompt?  @relation(fields: [promptId], references: [id])
+  originalPrompt   String   @db.Text
+  riskScore        Float
+  vulnerabilities  Json // Array of security threats
+  recommendations  Json // Array of recommendations
+  sanitizedPrompt  String?  @db.Text
+  scanDuration     Int // Scan duration in ms
+  complianceIssues Json     @default("[]")
+  timestamp        DateTime @default(now())
 
   @@index([userId, timestamp])
   @@index([tenantId, timestamp])
@@ -1413,50 +1433,51 @@ model SecurityScan {
 
 // 8. Prompt DNA System
 model PromptDNA {
-  id           String   @id @default(cuid())
-  promptId     String   @unique
-  prompt       Prompt   @relation(fields: [promptId], references: [id])
-  fingerprint  String   @unique
-  style        String
-  complexity   String
-  domain       String
-  structure    Json
-  traits       Json     // Genetic traits
-  generation   Int      @default(0)
-  lineage      String[] // Parent fingerprints
-  mutations    Json     @default("[]")
-  createdAt    DateTime @default(now())
+  id          String   @id @default(cuid())
+  promptId    String   @unique
+  prompt      Prompt   @relation(fields: [promptId], references: [id])
+  fingerprint String   @unique
+  style       String
+  complexity  String
+  domain      String
+  structure   Json
+  traits      Json // Genetic traits
+  generation  Int      @default(0)
+  lineage     String[] // Parent fingerprints
+  mutations   Json     @default("[]")
+  createdAt   DateTime @default(now())
 
   @@index([fingerprint])
   @@map("prompt_dna")
 }
 
-
 // 10. Performance Monitoring System
 model PerformanceMetrics {
-  id                String   @id @default(cuid())
-  timestamp         DateTime @default(now())
-  tenantId          String?
-  userId            String?
-  user              User?    @relation(fields: [userId], references: [id])
-  
+  id        String   @id @default(cuid())
+  timestamp DateTime @default(now())
+  tenantId  String?
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+
   // Token Efficiency Metrics
-  tokenEfficiency   Json     // { inputTokens, outputTokens, totalTokens, efficiency, wastedTokens, optimizationScore }
-  
+  tokenEfficiency Json // { inputTokens, outputTokens, totalTokens, efficiency, wastedTokens, optimizationScore }
+
   // Response Quality Metrics  
-  responseQuality   Json     // { accuracy, relevance, completeness, clarity, overall, humanFeedback }
-  
+  responseQuality Json // { accuracy, relevance, completeness, clarity, overall, humanFeedback }
+
   // Performance Metrics
-  performance       Json     // { responseTime, throughput, errorRate, retryCount, timeouts }
-  
+  performance Json // { responseTime, throughput, errorRate, retryCount, timeouts }
+
   // Cost Metrics
-  cost              Json     // { inputCost, outputCost, totalCost, costPerRequest, costEfficiency }
-  
+  cost Json // { inputCost, outputCost, totalCost, costPerRequest, costEfficiency }
+
   // Model Metrics
-  model             Json     // { name, version, provider, temperature, maxTokens }
-  
+  model Json // { name, version, provider, temperature, maxTokens }
+
   // Context Metrics
-  context           Json     // { promptLength, contextLength, complexity, category }
+  context  Json // { promptLength, contextLength, complexity, category }
+  Prompt   Prompt? @relation(fields: [promptId], references: [id])
+  promptId String?
 
   @@index([tenantId, timestamp])
   @@index([userId, timestamp])
@@ -1464,16 +1485,16 @@ model PerformanceMetrics {
 }
 
 model PerformanceAlert {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
   tenantId     String?
-  type         String   // cost_spike, quality_drop, performance_degradation, error_rate_high
-  severity     String   // low, medium, high, critical
+  type         String // cost_spike, quality_drop, performance_degradation, error_rate_high
+  severity     String // low, medium, high, critical
   message      String
-  metrics      Json     // Related metrics data
+  metrics      Json // Related metrics data
   threshold    Float
   currentValue Float
-  timestamp    DateTime @default(now())
-  resolved     Boolean  @default(false)
+  timestamp    DateTime  @default(now())
+  resolved     Boolean   @default(false)
   resolvedAt   DateTime?
   resolvedBy   String?
 
@@ -1483,46 +1504,46 @@ model PerformanceAlert {
 }
 
 model ComplianceReport {
-  id             String   @id @default(cuid())
-  tenantId       String
-  type           String   // gdpr, hipaa, sox, iso27001, pci
-  periodStart    DateTime
-  periodEnd      DateTime
-  totalEvents    Int
-  criticalEvents Int
-  findings       Json     // Array of findings
-  recommendations Json    // Array of recommendations
-  status         String   // passed, failed, needs_attention
-  generatedBy    String
-  signature      String   // Report signature for integrity
-  reportData     Json     // Full report data
-  createdAt      DateTime @default(now())
+  id              String   @id @default(cuid())
+  tenantId        String
+  type            String // gdpr, hipaa, sox, iso27001, pci
+  periodStart     DateTime
+  periodEnd       DateTime
+  totalEvents     Int
+  criticalEvents  Int
+  findings        Json // Array of findings
+  recommendations Json // Array of recommendations
+  status          String // passed, failed, needs_attention
+  generatedBy     String
+  signature       String // Report signature for integrity
+  reportData      Json // Full report data
+  createdAt       DateTime @default(now())
 
   @@index([tenantId, type])
   @@map("compliance_reports")
 }
 
 model ComplianceMetrics {
-  id            String   @id @default(cuid())
-  tenantId      String
-  date          String   // YYYY-MM-DD format
-  totalEvents   Int      @default(0)
-  criticalEvents Int     @default(0)
-  failedEvents  Int      @default(0)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id             String   @id @default(cuid())
+  tenantId       String
+  date           String // YYYY-MM-DD format
+  totalEvents    Int      @default(0)
+  criticalEvents Int      @default(0)
+  failedEvents   Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   @@unique([tenantId, date])
   @@map("compliance_metrics")
 }
 
 model AuditArchive {
-  id           String   @id @default(cuid())
-  originalId   String
-  tenantId     String?
-  archiveData  Json     // Complete audit log data
+  id            String   @id @default(cuid())
+  originalId    String
+  tenantId      String?
+  archiveData   Json // Complete audit log data
   archiveReason String
-  archivedAt   DateTime @default(now())
+  archivedAt    DateTime @default(now())
 
   @@index([originalId])
   @@map("audit_archive")
@@ -1532,8 +1553,8 @@ model DataRetentionPolicy {
   id                    String   @id @default(cuid())
   tenantId              String
   resourceType          String
-  retentionPeriod       Int      // days
-  archivalPolicy        String   // delete, archive, anonymize
+  retentionPeriod       Int // days
+  archivalPolicy        String // delete, archive, anonymize
   complianceRequirement String
   isActive              Boolean  @default(true)
   createdAt             DateTime @default(now())
@@ -1548,7 +1569,7 @@ model TenantRegionMapping {
   tenantId               String   @unique
   primaryRegion          String
   backupRegions          String[]
-  dataClassification     String   // public, internal, confidential, restricted
+  dataClassification     String // public, internal, confidential, restricted
   complianceRequirements String[]
   dataTypes              String[]
   migrationHistory       Json     @default("[]")
@@ -1560,38 +1581,38 @@ model TenantRegionMapping {
 }
 
 model DataMigration {
-  id                String   @id @default(cuid())
+  id                String    @id @default(cuid())
   tenantId          String
   fromRegion        String
   toRegion          String
   dataTypes         String[]
-  status            String   // pending, in_progress, completed, failed, cancelled
-  startedAt         DateTime @default(now())
+  status            String // pending, in_progress, completed, failed, cancelled
+  startedAt         DateTime  @default(now())
   completedAt       DateTime?
-  progress          Int      @default(0)
+  progress          Int       @default(0)
   estimatedSize     BigInt
   actualSize        BigInt?
   validationResults Json?
-  approvals         Json     // { requestedBy, approvedBy, approvedAt, reason }
-  createdAt         DateTime @default(now())
+  approvals         Json // { requestedBy, approvedBy, approvedAt, reason }
+  createdAt         DateTime  @default(now())
 
   @@index([tenantId, status])
   @@map("data_migrations")
 }
 
 model DataGovernancePolicy {
-  id                   String   @id @default(cuid())
-  tenantId             String?  // null for global policies
-  name                 String
-  description          String
-  rules                Json     // Array of governance rules
-  enforcementLevel     String   // advisory, warning, blocking
-  complianceFramework  String[]
-  isActive             Boolean  @default(true)
-  createdBy            String
-  updatedBy            String
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  id                  String   @id @default(cuid())
+  tenantId            String? // null for global policies
+  name                String
+  description         String
+  rules               Json // Array of governance rules
+  enforcementLevel    String // advisory, warning, blocking
+  complianceFramework String[]
+  isActive            Boolean  @default(true)
+  createdBy           String
+  updatedBy           String
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
   @@index([tenantId, isActive])
   @@map("data_governance_policies")
@@ -1604,11 +1625,10 @@ model RevenueTransaction {
   user      User     @relation(fields: [userId], references: [id])
   amount    Float
   currency  String   @default("USD")
-  type      String   // marketplace_sale, referral, bonus
+  type      String // marketplace_sale, referral, bonus
   status    String   @default("pending") // pending, completed, failed
   metadata  Json?
   createdAt DateTime @default(now())
 
   @@map("revenue_transactions")
 }
-

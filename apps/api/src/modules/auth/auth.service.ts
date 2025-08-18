@@ -463,4 +463,32 @@ export class AuthService {
     }
     return null;
   }
+
+  async logLoginAttempt(data: {
+    email: string;
+    ipAddress: string;
+    userAgent?: string;
+    success: boolean;
+    timestamp: Date;
+  }): Promise<void> {
+    try {
+      await this.prisma.analyticsEvent.create({
+        data: {
+          userId: null, // We don't have userId for failed attempts
+          sessionId: crypto.randomUUID(),
+          event: `auth.login_attempt`,
+          properties: {
+            email: data.email,
+            ipAddress: data.ipAddress,
+            userAgent: data.userAgent || 'unknown',
+            success: data.success,
+            timestamp: data.timestamp.toISOString(),
+          },
+          timestamp: data.timestamp,
+        },
+      });
+    } catch (error) {
+      this.logger.error('Failed to log login attempt', { error, email: data.email });
+    }
+  }
 }

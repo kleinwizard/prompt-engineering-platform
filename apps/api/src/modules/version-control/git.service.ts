@@ -1,4 +1,4 @@
-import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import * as crypto from 'crypto';
 
@@ -561,6 +561,84 @@ export class GitService {
     });
 
     return fork;
+  }
+
+  async deleteRepository(repoId: string, userId: string) {
+    // Verify ownership
+    const repo = await this.getRepository(repoId, userId);
+    if (repo.userId !== userId) {
+      throw new ForbiddenException('You do not have permission to delete this repository');
+    }
+
+    // Delete all related data
+    await this.prisma.$transaction(async (tx) => {
+      // Delete commits
+      await tx.promptCommit.deleteMany({
+        where: { repositoryId: repoId }
+      });
+
+      // Delete branches
+      await tx.promptBranch.deleteMany({
+        where: { repositoryId: repoId }
+      });
+
+      // Delete tags
+      await tx.promptTag.deleteMany({
+        where: { repositoryId: repoId }
+      });
+
+      // Delete repository
+      await tx.promptRepository.delete({
+        where: { id: repoId }
+      });
+    });
+
+    this.logger.log(`Repository deleted: ${repoId}`);
+  }
+
+  async getBranches(repoId: string, userId?: string) {
+    // Verify access
+    await this.getRepository(repoId, userId);
+
+    return this.prisma.promptBranch.findMany({
+      where: { repositoryId: repoId },
+      include: {
+        headCommit: {
+          include: {
+            author: {
+              select: { id: true, username: true, avatar: true }
+            }
+          }
+        }
+      },
+      orderBy: { createdAt: 'asc' }
+    });
+  }
+
+  async deleteBranch(repoId: string, branchName: string, userId: string) {
+    // Verify access
+    const repo = await this.getRepository(repoId, userId);
+    if (repo.userId !== userId) {
+      throw new ForbiddenException('You do not have permission to delete branches in this repository');
+    }
+
+    // Prevent deletion of default branch
+    if (branchName === repo.defaultBranch) {
+      throw new BadRequestException('Cannot delete the default branch');
+    }
+
+    // Get branch
+    const branch = await this.getBranch(repoId, branchName);
+    if (branch.protected) {
+      throw new BadRequestException('Cannot delete a protected branch');
+    }
+
+    // Delete branch
+    await this.prisma.promptBranch.delete({
+      where: { id: branch.id }
+    });
+
+    this.logger.log(`Branch deleted: ${branchName} in ${repoId}`);
   }
 
   // Helper methods

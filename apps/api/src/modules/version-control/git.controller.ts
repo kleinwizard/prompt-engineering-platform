@@ -56,7 +56,7 @@ export class GitController {
 
   @Delete('repositories/:id')
   async deleteRepository(@Param('id') repoId: string, @Request() req) {
-    // Implementation would verify ownership and delete repository
+    await this.gitService.deleteRepository(repoId, req.user.id);
     return { success: true, message: 'Repository deleted' };
   }
 
@@ -72,8 +72,8 @@ export class GitController {
   // Branch management
   @Get('repositories/:id/branches')
   async getBranches(@Param('id') repoId: string, @Request() req) {
-    // Implementation would return all branches for the repository
-    return { branches: [] };
+    const branches = await this.gitService.getBranches(repoId, req.user.id);
+    return { branches };
   }
 
   @Post('repositories/:id/branches')
@@ -91,7 +91,7 @@ export class GitController {
     @Param('branch') branchName: string,
     @Request() req
   ) {
-    // Implementation would verify permissions and delete branch
+    await this.gitService.deleteBranch(repoId, branchName, req.user.id);
     return { success: true, message: `Branch '${branchName}' deleted` };
   }
 

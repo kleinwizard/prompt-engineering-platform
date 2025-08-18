@@ -790,11 +790,38 @@ export class TemplatesService {
     let compiled = content;
 
     Object.entries(variables).forEach(([key, value]) => {
-      const placeholder = new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, 'g');
-      compiled = compiled.replace(placeholder, String(value));
+      // Sanitize the value to prevent injection
+      const sanitizedValue = this.sanitizeValue(value);
+      const placeholder = new RegExp(`\\{\\{\\s*${this.escapeRegex(key)}\\s*\\}\\}`, 'g');
+      compiled = compiled.replace(placeholder, sanitizedValue);
     });
 
     return compiled;
+  }
+
+  private sanitizeValue(value: any): string {
+    if (typeof value !== 'string') {
+      value = String(value);
+    }
+    
+    // Remove potential script tags and dangerous content
+    return value
+      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+      .replace(/on\w+\s*=\s*["'][^"']*["']/gi, '')
+      .replace(/javascript:/gi, '')
+      .replace(/data:text\/html/gi, '')
+      .replace(/vbscript:/gi, '')
+      .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
+      .replace(/<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi, '')
+      .replace(/<embed\b[^<]*(?:(?!<\/embed>)<[^<]*)*<\/embed>/gi, '')
+      .replace(/<link\b[^<]*>/gi, '')
+      .replace(/<meta\b[^<]*>/gi, '')
+      .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+      .trim();
+  }
+
+  private escapeRegex(str: string): string {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 
   private validateTemplateVariables(templateVariables: TemplateVariableDto[], providedVariables: Record<string, any>): {

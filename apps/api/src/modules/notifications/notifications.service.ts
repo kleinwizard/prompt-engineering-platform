@@ -3,6 +3,8 @@ import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { PrismaService } from '../../database/prisma.service';
 import { WebSocketServer } from '@nestjs/websockets';
 import { Server } from 'socket.io';
+import * as webpush from 'web-push';
+import { ConfigService } from '@nestjs/config';
 
 interface NotificationData {
   type: string;
@@ -64,7 +66,10 @@ export class NotificationsService {
   constructor(
     private prisma: PrismaService,
     private eventEmitter: EventEmitter2,
+    private configService: ConfigService,
   ) {
+    // Initialize web push
+    this.initializeWebPush();
     // Process notification queues every minute
     setInterval(() => {
       this.processEmailQueue().catch(error => 
@@ -801,5 +806,201 @@ export class NotificationsService {
     } catch (error) {
       this.logger.warn('Failed to track notification analytics', error);
     }
+  }
+
+  private initializeWebPush(): void {
+    const vapidPublicKey = this.configService.get('VAPID_PUBLIC_KEY');
+    const vapidPrivateKey = this.configService.get('VAPID_PRIVATE_KEY');
+
+    if (vapidPublicKey && vapidPrivateKey) {
+      webpush.setVapidDetails(
+        'mailto:support@promptplatform.com',
+        vapidPublicKey,
+        vapidPrivateKey
+      );
+      this.logger.log('Web push service initialized successfully');
+    } else {
+      this.logger.warn('VAPID keys not configured - push notifications disabled');
+    }
+  }
+
+  async sendPushNotification(userId: string, notification: NotificationData): Promise<void> {
+    try {
+      const subscriptions = await this.prisma.pushSubscription.findMany({
+        where: { userId }
+      });
+
+      if (subscriptions.length === 0) {
+        this.logger.debug(`No push subscriptions found for user ${userId}`);
+        return;
+      }
+
+      const promises = subscriptions.map(sub => 
+        webpush.sendNotification(
+          {
+            endpoint: sub.endpoint,
+            keys: {
+              p256dh: sub.p256dh,
+              auth: sub.auth
+            }
+          },
+          JSON.stringify({
+            title: notification.title,
+            body: notification.message,
+            icon: '/icon-192x192.png',
+            badge: '/badge-72x72.png',
+            image: notification.imageUrl,
+            tag: notification.type,
+            data: {
+              url: notification.actionUrl,
+              type: notification.type,
+              ...notification.data
+            },
+            actions: notification.actionText ? [{
+              action: 'view',
+              title: notification.actionText,
+              icon: '/icon-192x192.png'
+            }] : undefined,
+            requireInteraction: notification.priority === 'urgent',
+            silent: notification.priority === 'low'
+          })
+        ).catch(err => {
+          if (err.statusCode === 410) {
+            // Subscription expired, remove it
+            return this.prisma.pushSubscription.delete({
+              where: { id: sub.id }
+            }).catch(() => {
+              // Ignore deletion errors
+            });
+          } else if (err.statusCode === 413) {
+            this.logger.warn(`Push notification payload too large for user ${userId}`);
+          } else if (err.statusCode >= 400 && err.statusCode < 500) {
+            this.logger.warn(`Invalid push subscription for user ${userId}, removing`, err);
+            return this.prisma.pushSubscription.delete({
+              where: { id: sub.id }
+            }).catch(() => {
+              // Ignore deletion errors
+            });
+          } else {
+            this.logger.error(`Failed to send push notification to user ${userId}`, err);
+          }
+        })
+      );
+
+      await Promise.allSettled(promises);
+      
+      // Track push notification analytics
+      await this.trackNotificationAnalytics('push_notification_sent', {
+        userId,
+        type: notification.type,
+        subscriptionCount: subscriptions.length
+      });
+
+      this.logger.debug(`Push notifications sent to ${subscriptions.length} subscriptions for user ${userId}`);
+      
+    } catch (error) {
+      this.logger.error(`Failed to send push notifications to user ${userId}`, error);
+    }
+  }
+
+  async subscribeToPush(userId: string, subscription: {
+    endpoint: string;
+    p256dh: string;
+    auth: string;
+    userAgent?: string;
+  }): Promise<void> {
+    try {
+      // Check if subscription already exists
+      const existingSubscription = await this.prisma.pushSubscription.findFirst({
+        where: {
+          userId,
+          endpoint: subscription.endpoint
+        }
+      });
+
+      if (existingSubscription) {
+        // Update existing subscription
+        await this.prisma.pushSubscription.update({
+          where: { id: existingSubscription.id },
+          data: {
+            p256dh: subscription.p256dh,
+            auth: subscription.auth,
+            userAgent: subscription.userAgent,
+            updatedAt: new Date()
+          }
+        });
+      } else {
+        // Create new subscription
+        await this.prisma.pushSubscription.create({
+          data: {
+            userId,
+            endpoint: subscription.endpoint,
+            p256dh: subscription.p256dh,
+            auth: subscription.auth,
+            userAgent: subscription.userAgent
+          }
+        });
+      }
+
+      this.logger.log(`Push subscription updated for user ${userId}`);
+      
+      // Track subscription analytics
+      await this.trackNotificationAnalytics('push_subscription_created', {
+        userId,
+        endpoint: subscription.endpoint
+      });
+
+    } catch (error) {
+      this.logger.error(`Failed to subscribe user ${userId} to push notifications`, error);
+      throw error;
+    }
+  }
+
+  async unsubscribeFromPush(userId: string, endpoint: string): Promise<void> {
+    try {
+      await this.prisma.pushSubscription.deleteMany({
+        where: {
+          userId,
+          endpoint
+        }
+      });
+
+      this.logger.log(`Push subscription removed for user ${userId}`);
+      
+      // Track unsubscription analytics
+      await this.trackNotificationAnalytics('push_subscription_removed', {
+        userId,
+        endpoint
+      });
+
+    } catch (error) {
+      this.logger.error(`Failed to unsubscribe user ${userId} from push notifications`, error);
+      throw error;
+    }
+  }
+
+  async getPushSubscriptions(userId: string): Promise<any[]> {
+    return this.prisma.pushSubscription.findMany({
+      where: { userId },
+      select: {
+        id: true,
+        endpoint: true,
+        userAgent: true,
+        createdAt: true,
+        updatedAt: true
+      }
+    });
+  }
+
+  async testPushNotification(userId: string): Promise<void> {
+    await this.sendPushNotification(userId, {
+      type: 'test',
+      title: 'Test Notification',
+      message: 'This is a test push notification from Prompt Engineering Platform',
+      priority: 'medium',
+      category: 'system',
+      actionUrl: '/dashboard',
+      actionText: 'Go to Dashboard'
+    });
   }
 }

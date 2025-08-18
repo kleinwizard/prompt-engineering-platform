@@ -1,6 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
+import { ElasticsearchService } from '@nestjs/elasticsearch';
 
 interface SearchIndex {
   id: string;
@@ -72,16 +73,18 @@ interface SearchSuggestion {
 }
 
 @Injectable()
-export class SearchService {
+export class SearchService implements OnModuleInit {
   private readonly logger = new Logger(SearchService.name);
-  private readonly searchIndex: Map<string, SearchIndex> = new Map();
-  private readonly invertedIndex: Map<string, Set<string>> = new Map();
+  private readonly INDEX_NAME = 'prompts';
 
   constructor(
     private prisma: PrismaService,
     private eventEmitter: EventEmitter2,
-  ) {
-    this.initializeSearchIndex();
+    private elasticsearch: ElasticsearchService,
+  ) {}
+
+  async onModuleInit() {
+    await this.initializeElasticsearch();
   }
 
   async search(searchQuery: SearchQuery, userId?: string): Promise<SearchResult> {
@@ -100,163 +103,157 @@ export class SearchService {
 
     this.logger.log(`Search query: "${query}" by user ${userId}`);
 
-    const skip = (page - 1) * limit;
-    let matchingIds = new Set<string>();
-
-    // Text search
-    if (query && query.trim().length > 0) {
-      const queryTerms = this.tokenizeQuery(query.toLowerCase());
-      matchingIds = this.performTextSearch(queryTerms);
-    } else {
-      // Return all items if no query
-      matchingIds = new Set(this.searchIndex.keys());
-    }
-
-    // Apply filters
-    const filteredResults = Array.from(matchingIds)
-      .map(id => this.searchIndex.get(id))
-      .filter(item => {
-        if (!item) return false;
-
-        // Access control
-        if (!item.isPublic && (!userId || item.userId !== userId)) {
-          return false;
+    try {
+      const { body } = await this.elasticsearch.search({
+        index: this.INDEX_NAME,
+        body: {
+          query: {
+            bool: {
+              must: query ? [
+                {
+                  multi_match: {
+                    query: query,
+                    fields: ['title^2', 'content', 'tags']
+                  }
+                }
+              ] : [{ match_all: {} }],
+              filter: this.buildFilters({ type, category, tags, authorFilter, userId, filters })
+            }
+          },
+          from: (page - 1) * limit,
+          size: limit,
+          sort: this.buildSort(sortBy),
+          aggs: {
+            types: {
+              terms: { field: 'type' }
+            },
+            categories: {
+              terms: { field: 'category' }
+            },
+            tags: {
+              terms: { field: 'tags', size: 20 }
+            },
+            authors: {
+              terms: { field: 'userId', size: 10 }
+            }
+          },
+          highlight: query ? {
+            fields: {
+              title: {},
+              content: {
+                fragment_size: 150,
+                number_of_fragments: 3
+              }
+            }
+          } : undefined
         }
-
-        // Type filter
-        if (type.length > 0 && !type.includes(item.type)) {
-          return false;
-        }
-
-        // Category filter
-        if (category.length > 0 && !category.includes(item.category)) {
-          return false;
-        }
-
-        // Tags filter
-        if (tags.length > 0) {
-          const hasMatchingTag = tags.some(tag => 
-            item.tags.some(itemTag => 
-              itemTag.toLowerCase().includes(tag.toLowerCase())
-            )
-          );
-          if (!hasMatchingTag) return false;
-        }
-
-        // Author filter
-        if (authorFilter && item.userId !== authorFilter) {
-          return false;
-        }
-
-        // Custom filters
-        if (filters.minScore && item.metadata.improvementScore < filters.minScore) {
-          return false;
-        }
-
-        if (filters.maxScore && item.metadata.improvementScore > filters.maxScore) {
-          return false;
-        }
-
-        if (filters.model && item.metadata.model !== filters.model) {
-          return false;
-        }
-
-        return true;
       });
 
-    // Calculate relevance scores
-    const scoredResults = filteredResults.map(item => {
-      const score = this.calculateRelevanceScore(item, query, searchQuery);
-      const highlights = query ? this.generateHighlights(item, query) : [];
-      const excerpt = this.generateExcerpt(item.content, query);
+      const hits = body.hits.hits;
+      const total = body.hits.total.value;
+      const aggregations = body.aggregations;
+
+      // Process search results
+      const results = await this.processSearchResults(hits, query);
+
+      // Generate facets from aggregations
+      const facets = this.processFacets(aggregations);
+
+      // Track search analytics
+      await this.trackSearchAnalytics(userId, query, type, total);
+
+      const executionTime = Date.now() - startTime;
+      this.logger.log(`Elasticsearch search completed in ${executionTime}ms, ${total} results`);
 
       return {
-        ...item,
-        score,
-        highlights,
-        excerpt,
+        items: results,
+        total,
+        page,
+        limit,
+        facets,
+        query: query || '',
+        executionTime,
       };
-    });
-
-    // Sort results
-    const sortedResults = this.sortResults(scoredResults, sortBy);
-
-    // Paginate
-    const paginatedResults = sortedResults.slice(skip, skip + limit);
-
-    // Enrich with user data
-    const enrichedResults = await this.enrichWithUserData(paginatedResults);
-
-    // Generate facets
-    const facets = this.generateFacets(filteredResults);
-
-    // Track search analytics
-    await this.trackSearchAnalytics(userId, query, type, filteredResults.length);
-
-    const executionTime = Date.now() - startTime;
-    this.logger.log(`Search completed in ${executionTime}ms, ${filteredResults.length} results`);
-
-    return {
-      items: enrichedResults,
-      total: filteredResults.length,
-      page,
-      limit,
-      facets,
-      query: query || '',
-      executionTime,
-    };
+    } catch (error) {
+      this.logger.error('Elasticsearch search failed', error);
+      // Fallback to empty results
+      return {
+        items: [],
+        total: 0,
+        page,
+        limit,
+        facets: { types: [], categories: [], tags: [], authors: [] },
+        query: query || '',
+        executionTime: Date.now() - startTime,
+      };
+    }
   }
 
   async indexPrompt(prompt: any): Promise<void> {
-    const index: SearchIndex = {
+    const document = {
       id: prompt.id,
       type: 'prompt',
-      title: prompt.title,
-      content: `${prompt.title} ${prompt.originalPrompt} ${prompt.improvedPrompt || ''}`,
+      title: prompt.title || 'Untitled Prompt',
+      content: `${prompt.title || ''} ${prompt.originalPrompt || ''} ${prompt.improvedPrompt || ''}`,
       tags: prompt.tags || [],
-      category: prompt.category,
+      category: prompt.category || 'general',
       metadata: {
         improvementScore: prompt.improvementScore,
         model: prompt.model,
         temperature: prompt.temperature,
         maxTokens: prompt.maxTokens,
-        views: prompt.views,
+        views: prompt.views || 0,
         likes: prompt.likes || 0,
         forks: prompt.forks || 0,
       },
       userId: prompt.userId,
-      isPublic: prompt.isPublic,
+      isPublic: prompt.isPublic || false,
       createdAt: prompt.createdAt,
       updatedAt: prompt.updatedAt,
     };
 
-    await this.addToIndex(index);
-    this.logger.debug(`Indexed prompt: ${prompt.id}`);
+    try {
+      await this.elasticsearch.index({
+        index: this.INDEX_NAME,
+        id: prompt.id,
+        body: document,
+      });
+      this.logger.debug(`Indexed prompt: ${prompt.id}`);
+    } catch (error) {
+      this.logger.error(`Failed to index prompt ${prompt.id}`, error);
+    }
   }
 
   async indexTemplate(template: any): Promise<void> {
-    const index: SearchIndex = {
+    const document = {
       id: template.id,
       type: 'template',
-      title: template.name,
-      content: `${template.name} ${template.description} ${template.content}`,
+      title: template.title || template.name || 'Untitled Template',
+      content: `${template.title || template.name || ''} ${template.description || ''} ${template.content || ''}`,
       tags: template.tags || [],
-      category: template.category,
+      category: template.category || 'general',
       metadata: {
-        rating: template.rating,
-        usageCount: template.usageCount,
+        rating: template.rating || 0,
+        usageCount: template.usageCount || 0,
         variables: template.variables,
-        model: template.model,
-        difficulty: template.difficulty,
+        difficulty: template.difficulty || 'beginner',
       },
       userId: template.userId,
-      isPublic: template.isPublic,
+      isPublic: template.isPublic || false,
       createdAt: template.createdAt,
       updatedAt: template.updatedAt,
     };
 
-    await this.addToIndex(index);
-    this.logger.debug(`Indexed template: ${template.id}`);
+    try {
+      await this.elasticsearch.index({
+        index: this.INDEX_NAME,
+        id: template.id,
+        body: document,
+      });
+      this.logger.debug(`Indexed template: ${template.id}`);
+    } catch (error) {
+      this.logger.error(`Failed to index template ${template.id}`, error);
+    }
   }
 
   async indexUser(user: any): Promise<void> {
@@ -471,13 +468,232 @@ export class SearchService {
     this.logger.log(`Search index rebuilt with ${this.searchIndex.size} items`);
   }
 
-  private async initializeSearchIndex(): Promise<void> {
-    // Initialize the search index on startup
+  private async initializeElasticsearch(): Promise<void> {
+    try {
+      // Create Elasticsearch index with proper mappings
+      await this.elasticsearch.indices.create({
+        index: this.INDEX_NAME,
+        body: {
+          mappings: {
+            properties: {
+              id: { type: 'keyword' },
+              type: { type: 'keyword' },
+              title: { type: 'text', analyzer: 'standard' },
+              content: { type: 'text', analyzer: 'standard' },
+              tags: { type: 'keyword' },
+              category: { type: 'keyword' },
+              userId: { type: 'keyword' },
+              isPublic: { type: 'boolean' },
+              createdAt: { type: 'date' },
+              updatedAt: { type: 'date' },
+              metadata: {
+                type: 'object',
+                properties: {
+                  improvementScore: { type: 'float' },
+                  rating: { type: 'float' },
+                  usageCount: { type: 'long' },
+                  views: { type: 'long' },
+                  likes: { type: 'long' },
+                  forks: { type: 'long' },
+                  model: { type: 'keyword' },
+                  difficulty: { type: 'keyword' }
+                }
+              }
+            }
+          }
+        }
+      });
+      this.logger.log(`Elasticsearch index '${this.INDEX_NAME}' created successfully`);
+    } catch (error) {
+      if (error.meta?.body?.error?.type === 'resource_already_exists_exception') {
+        this.logger.log(`Elasticsearch index '${this.INDEX_NAME}' already exists`);
+      } else {
+        this.logger.warn('Failed to create Elasticsearch index', error);
+      }
+    }
+
+    // Initialize index with existing data
     setTimeout(() => {
       this.rebuildIndex().catch(error => {
-        this.logger.error('Failed to initialize search index', error);
+        this.logger.error('Failed to rebuild search index', error);
       });
-    }, 1000); // Delay to allow other services to initialize
+    }, 2000);
+  }
+
+  private buildFilters(params: any): any[] {
+    const filters = [];
+
+    // Access control filter
+    if (params.userId) {
+      filters.push({
+        bool: {
+          should: [
+            { term: { isPublic: true } },
+            { term: { userId: params.userId } }
+          ]
+        }
+      });
+    } else {
+      filters.push({ term: { isPublic: true } });
+    }
+
+    // Type filter
+    if (params.type && params.type.length > 0) {
+      filters.push({ terms: { type: params.type } });
+    }
+
+    // Category filter
+    if (params.category && params.category.length > 0) {
+      filters.push({ terms: { category: params.category } });
+    }
+
+    // Tags filter
+    if (params.tags && params.tags.length > 0) {
+      filters.push({ terms: { tags: params.tags } });
+    }
+
+    // Author filter
+    if (params.authorFilter) {
+      filters.push({ term: { userId: params.authorFilter } });
+    }
+
+    // Custom filters
+    if (params.filters) {
+      if (params.filters.minScore) {
+        filters.push({
+          range: {
+            'metadata.improvementScore': { gte: params.filters.minScore }
+          }
+        });
+      }
+
+      if (params.filters.maxScore) {
+        filters.push({
+          range: {
+            'metadata.improvementScore': { lte: params.filters.maxScore }
+          }
+        });
+      }
+
+      if (params.filters.model) {
+        filters.push({ term: { 'metadata.model': params.filters.model } });
+      }
+    }
+
+    return filters;
+  }
+
+  private buildSort(sortBy: string): any[] {
+    switch (sortBy) {
+      case 'recent':
+        return [{ createdAt: { order: 'desc' } }];
+      case 'popular':
+        return [
+          { 'metadata.likes': { order: 'desc' } },
+          { 'metadata.views': { order: 'desc' } }
+        ];
+      case 'score':
+        return [
+          { 'metadata.improvementScore': { order: 'desc' } },
+          { 'metadata.rating': { order: 'desc' } }
+        ];
+      case 'relevance':
+      default:
+        return [{ _score: { order: 'desc' } }];
+    }
+  }
+
+  private async processSearchResults(hits: any[], query?: string): Promise<SearchResultItem[]> {
+    const userIds = [...new Set(hits.map(hit => hit._source.userId))];
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, username: true, avatar: true },
+    });
+
+    const userMap = new Map(users.map(user => [user.id, user]));
+
+    return hits.map(hit => {
+      const source = hit._source;
+      const highlights = hit.highlight || {};
+      
+      return {
+        id: source.id,
+        type: source.type,
+        title: source.title,
+        content: source.content,
+        excerpt: this.generateExcerptFromHighlight(highlights, source.content, query),
+        tags: source.tags || [],
+        category: source.category,
+        author: userMap.get(source.userId) || {
+          id: source.userId,
+          username: 'Unknown',
+        },
+        score: hit._score || 0,
+        highlights: this.extractHighlights(highlights),
+        metadata: source.metadata || {},
+        createdAt: new Date(source.createdAt),
+        updatedAt: new Date(source.updatedAt),
+      };
+    });
+  }
+
+  private processFacets(aggregations: any): SearchFacets {
+    return {
+      types: aggregations?.types?.buckets?.map(bucket => ({
+        name: bucket.key,
+        count: bucket.doc_count
+      })) || [],
+      categories: aggregations?.categories?.buckets?.map(bucket => ({
+        name: bucket.key,
+        count: bucket.doc_count
+      })) || [],
+      tags: aggregations?.tags?.buckets?.map(bucket => ({
+        name: bucket.key,
+        count: bucket.doc_count
+      })) || [],
+      authors: aggregations?.authors?.buckets?.map(bucket => ({
+        name: bucket.key,
+        count: bucket.doc_count
+      })) || [],
+    };
+  }
+
+  private extractHighlights(highlights: any): string[] {
+    const extracted = [];
+    
+    if (highlights.title) {
+      extracted.push(...highlights.title);
+    }
+    
+    if (highlights.content) {
+      extracted.push(...highlights.content);
+    }
+    
+    return extracted.slice(0, 3);
+  }
+
+  private generateExcerptFromHighlight(highlights: any, content: string, query?: string): string {
+    if (highlights.content && highlights.content.length > 0) {
+      return highlights.content[0];
+    }
+    
+    if (!query) {
+      return content.substring(0, 200) + (content.length > 200 ? '...' : '');
+    }
+
+    const queryLower = query.toLowerCase();
+    const index = content.toLowerCase().indexOf(queryLower);
+    
+    if (index === -1) {
+      return content.substring(0, 200) + (content.length > 200 ? '...' : '');
+    }
+
+    const start = Math.max(0, index - 100);
+    const end = Math.min(content.length, index + 100);
+    
+    return (start > 0 ? '...' : '') + 
+           content.substring(start, end) + 
+           (end < content.length ? '...' : '');
   }
 
   private async addToIndex(index: SearchIndex): Promise<void> {

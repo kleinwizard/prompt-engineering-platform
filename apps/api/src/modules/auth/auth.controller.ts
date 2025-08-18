@@ -67,6 +67,16 @@ export class AuthController {
     @Ip() ip?: string,
   ) {
     const result = await this.authService.login(loginDto, userAgent, ip);
+    
+    // Log the login attempt
+    await this.authService.logLoginAttempt({
+      email: loginDto.email,
+      ipAddress: ip || 'unknown',
+      userAgent,
+      success: true,
+      timestamp: new Date()
+    });
+    
     return {
       status: 'success',
       message: 'Login successful',
