@@ -74,6 +74,47 @@ model User {
   // API Keys
   apiKeys       ApiKey[]
   
+  // ========== ENTERPRISE FEATURES ==========
+  
+  // Enterprise tenant
+  tenantId                String?
+  tenant                  Tenant?                  @relation(fields: [tenantId], references: [id])
+  
+  // Workflow system
+  workflows               PromptWorkflow[]
+  workflowExecutions      WorkflowExecution[]
+  
+  // A/B Testing
+  experiments             PromptExperiment[]
+  experimentResults       PromptExperimentResult[]
+  
+  // Coaching
+  coachPreference         UserCoachPreference?
+  
+  // Certification
+  certifications          UserCertification[]
+  
+  // Git system
+  repositories            PromptRepository[]
+  commits                 PromptCommit[]
+  
+  // Marketplace
+  marketplaceListings     MarketplaceListing[]     @relation("MarketplaceSeller")
+  marketplacePurchases    MarketplacePurchase[]    @relation("MarketplaceBuyer")
+  marketplaceReviews      MarketplaceReview[]
+  marketplaceEarnings     Float                    @default(0)
+  pendingPayout           Float                    @default(0)
+  
+  // Security & Audit
+  auditLogs               AuditLog[]
+  securityScans           SecurityScan[]
+  
+  // Performance
+  performanceMetrics      PerformanceMetric[]
+  
+  // Revenue
+  revenueTransactions     RevenueTransaction[]
+  
   @@map("users")
 }
 
@@ -192,6 +233,20 @@ model Prompt {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   
+  // ========== ENTERPRISE FEATURES ==========
+  
+  // Marketplace
+  marketplaceListings     MarketplaceListing[]
+  
+  // DNA Analysis
+  dna                     PromptDNA?
+  
+  // Security
+  securityScans           SecurityScan[]
+  
+  // Performance
+  performanceMetrics      PerformanceMetric[]
+  
   @@map("prompts")
 }
 
@@ -232,6 +287,11 @@ model Template {
   
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+  
+  // ========== ENTERPRISE FEATURES ==========
+  
+  // Marketplace
+  marketplaceListings     MarketplaceListing[]
   
   @@map("templates")
 }
@@ -811,3 +871,491 @@ model ApiKey {
   
   @@map("api_keys")
 }
+
+// ===============================
+// 🚀 ENTERPRISE FEATURES SUITE
+// ===============================
+
+// 1. AI-Powered Prompt Workflows
+model PromptWorkflow {
+  id            String               @id @default(cuid())
+  userId        String
+  user          User                 @relation(fields: [userId], references: [id])
+  name          String
+  description   String?
+  tags          String[]
+  isPublic      Boolean              @default(false)
+  nodes         PromptWorkflowNode[]
+  edges         PromptWorkflowEdge[]
+  variables     Json                 @default("{}")
+  runCount      Int                  @default(0)
+  lastRunAt     DateTime?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  // Relations
+  marketplaceListings MarketplaceListing[]
+  executions          WorkflowExecution[]
+
+  @@map("prompt_workflows")
+}
+
+model PromptWorkflowNode {
+  id          String          @id @default(cuid())
+  workflowId  String
+  workflow    PromptWorkflow  @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  type        String          // prompt, condition, merge, split, loop, transform
+  position    Json            // {x: number, y: number}
+  data        Json            // node-specific data
+  outputs     Json            @default("[]")
+  createdAt   DateTime        @default(now())
+
+  @@map("prompt_workflow_nodes")
+}
+
+model PromptWorkflowEdge {
+  id          String          @id @default(cuid())
+  workflowId  String
+  workflow    PromptWorkflow  @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  sourceId    String
+  targetId    String
+  condition   String?         // JavaScript expression
+  label       String?
+
+  @@map("prompt_workflow_edges")
+}
+
+model WorkflowExecution {
+  id          String          @id @default(cuid())
+  workflowId  String
+  workflow    PromptWorkflow  @relation(fields: [workflowId], references: [id])
+  userId      String
+  user        User            @relation(fields: [userId], references: [id])
+  inputs      Json
+  outputs     Json?
+  status      String          @default("running") // running, completed, failed
+  error       String?
+  startedAt   DateTime        @default(now())
+  completedAt DateTime?
+  duration    Int?            // milliseconds
+
+  @@map("workflow_executions")
+}
+
+// 2. A/B Testing Framework
+model PromptExperiment {
+  id              String                    @id @default(cuid())
+  userId          String
+  user            User                      @relation(fields: [userId], references: [id])
+  name            String
+  hypothesis      String
+  status          String                    @default("draft") // draft, running, completed, cancelled
+  variants        PromptVariant[]
+  metrics         Json                      // {primary: string, secondary: string[]}
+  sampleSize      Int
+  confidenceLevel Float                     @default(0.95)
+  startedAt       DateTime?
+  completedAt     DateTime?
+  winner          String?                   // variant ID
+  results         PromptExperimentResult[]
+  createdAt       DateTime                  @default(now())
+  updatedAt       DateTime                  @updatedAt
+
+  @@map("prompt_experiments")
+}
+
+model PromptVariant {
+  id            String              @id @default(cuid())
+  experimentId  String
+  experiment    PromptExperiment    @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  name          String
+  prompt        String              @db.Text
+  allocation    Float               @default(0.5) // traffic percentage
+  impressions   Int                 @default(0)
+  conversions   Int                 @default(0)
+  metrics       Json                @default("{}")
+
+  @@map("prompt_variants")
+}
+
+model PromptExperimentResult {
+  id           String           @id @default(cuid())
+  experimentId String
+  experiment   PromptExperiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  variantId    String
+  userId       String
+  user         User             @relation(fields: [userId], references: [id])
+  converted    Boolean          @default(false)
+  metrics      Json             @default("{}")
+  timestamp    DateTime         @default(now())
+
+  @@map("prompt_experiment_results")
+}
+
+// 3. AI Coach Personalities
+model CoachPersonality {
+  id              String                 @id @default(cuid())
+  name            String                 @unique
+  displayName     String
+  avatar          String
+  description     String
+  tone            String                 // formal, casual, friendly, strict, analytical
+  responseStyle   Json                   // {brevity: 'concise'|'detailed', examples: boolean, analogies: boolean}
+  specialties     String[]
+  motivationStyle String                 // encouraging, challenging, balanced, tough-love
+  feedbackStyle   Json                   // {positive_first: boolean, directness: 0-1, suggestion_rate: 0-1}
+  personality     Json                   // Full personality configuration
+  isActive        Boolean                @default(true)
+  usageCount      Int                    @default(0)
+  preferences     UserCoachPreference[]
+
+  @@map("coach_personalities")
+}
+
+model UserCoachPreference {
+  id            String            @id @default(cuid())
+  userId        String            @unique
+  user          User              @relation(fields: [userId], references: [id])
+  personalityId String
+  personality   CoachPersonality  @relation(fields: [personalityId], references: [id])
+  customization Json?             // User-specific overrides
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@map("user_coach_preferences")
+}
+
+// 4. Certification System
+model PromptCertification {
+  id              String                @id @default(cuid())
+  level           String                // bronze, silver, gold, platinum, master
+  name            String
+  description     String
+  requirements    Json                  // Detailed requirements
+  benefits        Json                  // What users get
+  icon            String
+  color           String
+  sortOrder       Int
+  isActive        Boolean               @default(true)
+  users           UserCertification[]
+
+  @@map("prompt_certifications")
+}
+
+model UserCertification {
+  id                String              @id @default(cuid())
+  userId            String
+  user              User                @relation(fields: [userId], references: [id])
+  certificationId   String
+  certification     PromptCertification @relation(fields: [certificationId], references: [id])
+  progress          Json                // Detailed progress tracking
+  status            String              // in_progress, completed, expired
+  startedAt         DateTime            @default(now())
+  completedAt       DateTime?
+  expiresAt         DateTime?
+  certificate       String?             // Certificate ID/URL
+  
+  @@unique([userId, certificationId])
+  @@map("user_certifications")
+}
+
+model CertificationRequirement {
+  id              String   @id @default(cuid())
+  certificationId String
+  type            String   // prompt_count, quality_score, peer_review, test, project
+  metric          String
+  target          Float
+  description     String
+
+  @@map("certification_requirements")
+}
+
+// 5. Prompt Git Version Control
+model PromptRepository {
+  id              String            @id @default(cuid())
+  name            String
+  description     String?
+  userId          String
+  user            User              @relation(fields: [userId], references: [id])
+  defaultBranch   String            @default("main")
+  branches        PromptBranch[]
+  commits         PromptCommit[]
+  tags            PromptTag[]
+  isPublic        Boolean           @default(false)
+  stars           Int               @default(0)
+  forks           Int               @default(0)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@map("prompt_repositories")
+}
+
+model PromptBranch {
+  id              String            @id @default(cuid())
+  repositoryId    String
+  repository      PromptRepository  @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  name            String
+  headCommitId    String?
+  headCommit      PromptCommit?     @relation("BranchHead", fields: [headCommitId], references: [id])
+  protected       Boolean           @default(false)
+  createdAt       DateTime          @default(now())
+  
+  @@unique([repositoryId, name])
+  @@map("prompt_branches")
+}
+
+model PromptCommit {
+  id              String            @id @default(cuid())
+  repositoryId    String
+  repository      PromptRepository  @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  message         String
+  content         String            @db.Text
+  diff            Json
+  parentId        String?
+  parent          PromptCommit?     @relation("CommitHistory", fields: [parentId], references: [id])
+  children        PromptCommit[]    @relation("CommitHistory")
+  authorId        String
+  author          User              @relation(fields: [authorId], references: [id])
+  timestamp       DateTime          @default(now())
+  hash            String            @unique
+  
+  // Relations
+  branches        PromptBranch[]    @relation("BranchHead")
+
+  @@map("prompt_commits")
+}
+
+model PromptTag {
+  id           String           @id @default(cuid())
+  repositoryId String
+  repository   PromptRepository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  name         String
+  commitId     String
+  message      String?
+  createdAt    DateTime         @default(now())
+
+  @@unique([repositoryId, name])
+  @@map("prompt_tags")
+}
+
+// 6. Marketplace
+model MarketplaceListing {
+  id              String                  @id @default(cuid())
+  promptId        String?
+  prompt          Prompt?                 @relation(fields: [promptId], references: [id])
+  templateId      String?
+  template        Template?               @relation(fields: [templateId], references: [id])
+  workflowId      String?
+  workflow        PromptWorkflow?         @relation(fields: [workflowId], references: [id])
+  
+  sellerId        String
+  seller          User                    @relation("MarketplaceSeller", fields: [sellerId], references: [id])
+  
+  title           String
+  description     String                  @db.Text
+  category        String
+  tags            String[]
+  
+  price           Float
+  currency        String                  @default("USD")
+  licensingType   String                  // personal, commercial, enterprise
+  
+  // Stats
+  views           Int                     @default(0)
+  purchases       Int                     @default(0)
+  revenue         Float                   @default(0)
+  rating          Float                   @default(0)
+  
+  // Marketplace features
+  featured        Boolean                 @default(false)
+  verified        Boolean                 @default(false)
+  
+  status          String                  @default("pending") // pending, active, suspended
+  
+  purchases       MarketplacePurchase[]
+  reviews         MarketplaceReview[]
+  
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+
+  @@map("marketplace_listings")
+}
+
+model MarketplacePurchase {
+  id              String                  @id @default(cuid())
+  listingId       String
+  listing         MarketplaceListing      @relation(fields: [listingId], references: [id])
+  buyerId         String
+  buyer           User                    @relation("MarketplaceBuyer", fields: [buyerId], references: [id])
+  
+  price           Float
+  currency        String
+  licensingType   String
+  
+  transactionId   String                  @unique
+  paymentMethod   String
+  paymentStatus   String                  @default("pending")
+  
+  downloadCount   Int                     @default(0)
+  lastDownload    DateTime?
+  
+  createdAt       DateTime                @default(now())
+
+  @@map("marketplace_purchases")
+}
+
+model MarketplaceReview {
+  id        String              @id @default(cuid())
+  listingId String
+  listing   MarketplaceListing  @relation(fields: [listingId], references: [id])
+  userId    String
+  user      User                @relation(fields: [userId], references: [id])
+  rating    Int                 // 1-5 stars
+  review    String?
+  helpful   Int                 @default(0)
+  createdAt DateTime            @default(now())
+
+  @@unique([listingId, userId])
+  @@map("marketplace_reviews")
+}
+
+// 7. Enterprise Features
+model Tenant {
+  id                String              @id @default(cuid())
+  name              String
+  domain            String              @unique
+  plan              String              @default("enterprise")
+  settings          Json                @default("{}")
+  dataResidency     String              @default("us-east")
+  
+  // Features
+  customBranding    Json?
+  apiLimits         Json                @default("{}")
+  
+  users             User[]
+  ssoConfigs        SSOConfiguration[]
+  auditLogs         AuditLog[]
+  customModels      CustomModel[]
+  
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  @@map("tenants")
+}
+
+model SSOConfiguration {
+  id       String  @id @default(cuid())
+  tenantId String
+  tenant   Tenant  @relation(fields: [tenantId], references: [id])
+  type     String  // saml, oidc, ldap
+  config   Json    // Provider-specific configuration
+  enabled  Boolean @default(true)
+
+  @@map("sso_configurations")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  tenantId   String?
+  tenant     Tenant?  @relation(fields: [tenantId], references: [id])
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  action     String
+  resource   String
+  resourceId String?
+  changes    Json?
+  ipAddress  String?
+  userAgent  String?
+  result     String   // success, failure
+  metadata   Json?
+  signature  String   // For tamper detection
+  timestamp  DateTime @default(now())
+
+  @@index([action, timestamp])
+  @@index([userId, timestamp])
+  @@map("audit_logs")
+}
+
+model CustomModel {
+  id            String  @id @default(cuid())
+  tenantId      String
+  tenant        Tenant  @relation(fields: [tenantId], references: [id])
+  name          String
+  type          String  // api, finetuned, hosted
+  endpoint      String
+  authentication Json   // Encrypted credentials
+  capabilities  Json
+  pricing       Json?
+  isActive      Boolean @default(true)
+
+  @@map("custom_models")
+}
+
+// 8. Prompt DNA System
+model PromptDNA {
+  id           String   @id @default(cuid())
+  promptId     String   @unique
+  prompt       Prompt   @relation(fields: [promptId], references: [id])
+  fingerprint  String   @unique
+  style        String
+  complexity   String
+  domain       String
+  structure    Json
+  traits       Json     // Genetic traits
+  generation   Int      @default(0)
+  lineage      String[] // Parent fingerprints
+  mutations    Json     @default("[]")
+  createdAt    DateTime @default(now())
+
+  @@index([fingerprint])
+  @@map("prompt_dna")
+}
+
+// 9. Security Scanner
+model SecurityScan {
+  id             String   @id @default(cuid())
+  promptId       String
+  prompt         Prompt   @relation(fields: [promptId], references: [id])
+  userId         String
+  user           User     @relation(fields: [userId], references: [id])
+  riskScore      Float
+  vulnerabilities Json    // Array of vulnerabilities
+  recommendations Json    // Array of recommendations
+  sanitizedPrompt String? @db.Text
+  timestamp      DateTime @default(now())
+
+  @@map("security_scans")
+}
+
+// 10. Performance Metrics
+model PerformanceMetric {
+  id            String   @id @default(cuid())
+  promptId      String?
+  prompt        Prompt?  @relation(fields: [promptId], references: [id])
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  metric        String   // token_efficiency, response_quality, cost_per_request
+  value         Float
+  model         String
+  timestamp     DateTime @default(now())
+
+  @@index([metric, timestamp])
+  @@index([userId, timestamp])
+  @@map("performance_metrics")
+}
+
+// 11. Revenue & Payouts
+model RevenueTransaction {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  amount    Float
+  currency  String   @default("USD")
+  type      String   // marketplace_sale, referral, bonus
+  status    String   @default("pending") // pending, completed, failed
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@map("revenue_transactions")
+}
+
