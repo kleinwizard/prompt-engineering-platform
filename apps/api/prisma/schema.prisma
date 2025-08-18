@@ -110,7 +110,10 @@ model User {
   securityScans           SecurityScan[]
   
   // Performance
-  performanceMetrics      PerformanceMetric[]
+  performanceMetrics      PerformanceMetrics[]
+  
+  // Custom Models
+  modelRequests           ModelRequest[]
   
   // Revenue
   revenueTransactions     RevenueTransaction[]
@@ -245,7 +248,7 @@ model Prompt {
   securityScans           SecurityScan[]
   
   // Performance
-  performanceMetrics      PerformanceMetric[]
+  performanceMetrics      PerformanceMetrics[]
   
   @@map("prompts")
 }
@@ -1277,18 +1280,135 @@ model AuditLog {
 }
 
 model CustomModel {
-  id            String  @id @default(cuid())
-  tenantId      String
-  tenant        Tenant  @relation(fields: [tenantId], references: [id])
-  name          String
-  type          String  // api, finetuned, hosted
-  endpoint      String
-  authentication Json   // Encrypted credentials
-  capabilities  Json
-  pricing       Json?
-  isActive      Boolean @default(true)
+  id                String             @id @default(cuid())
+  tenantId          String
+  tenant            Tenant             @relation(fields: [tenantId], references: [id])
+  name              String
+  description       String?
+  type              String             // api, finetuned, hosted, local
+  provider          String             // openai, anthropic, google, custom
+  endpoint          String
+  authentication    Json               // Encrypted credentials
+  capabilities      Json               // Model capabilities
+  parameters        Json               // Model parameters
+  metadata          Json               @default("{}")
+  isActive          Boolean            @default(true)
+  healthStatus      String             @default("unknown") // healthy, unhealthy, unknown
+  healthDetails     Json?
+  lastHealthCheck   DateTime?
+  lastUsedAt        DateTime?
+  deployments       ModelDeployment[]
+  fineTuningJobs    FineTuningJob[]
+  metrics           ModelMetrics[]
+  requests          ModelRequest[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  deletedAt         DateTime?
 
   @@map("custom_models")
+}
+
+model ModelDeployment {
+  id                String       @id @default(cuid())
+  tenantId          String
+  modelId           String
+  model             CustomModel  @relation(fields: [modelId], references: [id])
+  fineTuningJobId   String?
+  fineTuningJob     FineTuningJob? @relation(fields: [fineTuningJobId], references: [id])
+  infrastructure    String       // aws, gcp, azure, on_premise
+  region            String?
+  instanceType      String?
+  endpoint          String?
+  scaling           Json         // Scaling configuration
+  monitoring        Json         // Monitoring configuration
+  status            String       // deploying, active, inactive, failed
+  deploymentDetails Json?
+  deployedAt        DateTime     @default(now())
+  terminatedAt      DateTime?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  @@map("model_deployments")
+}
+
+model FineTuningJob {
+  id               String             @id @default(cuid())
+  tenantId         String
+  modelId          String
+  model            CustomModel        @relation(fields: [modelId], references: [id])
+  baseModel        String
+  trainingData     Json               // Training dataset information
+  hyperparameters  Json               // Training hyperparameters
+  status           String             // pending, training, completed, failed, cancelled
+  progress         Int                @default(0)
+  metrics          Json?              // Training metrics
+  estimatedCost    Float
+  actualCost       Float?
+  startedAt        DateTime?
+  completedAt      DateTime?
+  deployments      ModelDeployment[]
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  @@map("fine_tuning_jobs")
+}
+
+model ModelMetrics {
+  id           String      @id @default(cuid())
+  modelId      String
+  model        CustomModel @relation(fields: [modelId], references: [id])
+  timestamp    DateTime    @default(now())
+  latency      Float       // Response latency in ms
+  errorCount   Int         @default(0)
+  successCount Int         @default(0)
+  tokenUsage   Json?       // Token usage statistics
+  cost         Float?      // Cost for this metric period
+  qualityScore Float?      // Quality score if available
+  metadata     Json        @default("{}")
+
+  @@index([modelId, timestamp])
+  @@map("model_metrics")
+}
+
+model ModelRequest {
+  id            String      @id @default(cuid())
+  modelId       String
+  model         CustomModel @relation(fields: [modelId], references: [id])
+  userId        String?
+  user          User?       @relation(fields: [userId], references: [id])
+  requestType   String      // completion, chat, embedding
+  inputTokens   Int?
+  outputTokens  Int?
+  cost          Float?
+  latency       Float?      // Response time in ms
+  success       Boolean     @default(true)
+  errorMessage  String?
+  timestamp     DateTime    @default(now())
+
+  @@index([modelId, timestamp])
+  @@index([userId, timestamp])
+  @@map("model_requests")
+}
+
+model SecurityScan {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id])
+  tenantId          String?
+  promptId          String?
+  prompt            Prompt?  @relation(fields: [promptId], references: [id])
+  originalPrompt    String   @db.Text
+  riskScore         Float
+  vulnerabilities   Json     // Array of security threats
+  recommendations   Json     // Array of recommendations
+  sanitizedPrompt   String?  @db.Text
+  scanDuration      Int      // Scan duration in ms
+  complianceIssues  Json     @default("[]")
+  timestamp         DateTime @default(now())
+
+  @@index([userId, timestamp])
+  @@index([tenantId, timestamp])
+  @@map("security_scans")
 }
 
 // 8. Prompt DNA System
@@ -1311,37 +1431,170 @@ model PromptDNA {
   @@map("prompt_dna")
 }
 
-// 9. Security Scanner
-model SecurityScan {
-  id             String   @id @default(cuid())
-  promptId       String
-  prompt         Prompt   @relation(fields: [promptId], references: [id])
-  userId         String
-  user           User     @relation(fields: [userId], references: [id])
-  riskScore      Float
-  vulnerabilities Json    // Array of vulnerabilities
-  recommendations Json    // Array of recommendations
-  sanitizedPrompt String? @db.Text
-  timestamp      DateTime @default(now())
 
-  @@map("security_scans")
-}
+// 10. Performance Monitoring System
+model PerformanceMetrics {
+  id                String   @id @default(cuid())
+  timestamp         DateTime @default(now())
+  tenantId          String?
+  userId            String?
+  user              User?    @relation(fields: [userId], references: [id])
+  
+  // Token Efficiency Metrics
+  tokenEfficiency   Json     // { inputTokens, outputTokens, totalTokens, efficiency, wastedTokens, optimizationScore }
+  
+  // Response Quality Metrics  
+  responseQuality   Json     // { accuracy, relevance, completeness, clarity, overall, humanFeedback }
+  
+  // Performance Metrics
+  performance       Json     // { responseTime, throughput, errorRate, retryCount, timeouts }
+  
+  // Cost Metrics
+  cost              Json     // { inputCost, outputCost, totalCost, costPerRequest, costEfficiency }
+  
+  // Model Metrics
+  model             Json     // { name, version, provider, temperature, maxTokens }
+  
+  // Context Metrics
+  context           Json     // { promptLength, contextLength, complexity, category }
 
-// 10. Performance Metrics
-model PerformanceMetric {
-  id            String   @id @default(cuid())
-  promptId      String?
-  prompt        Prompt?  @relation(fields: [promptId], references: [id])
-  userId        String
-  user          User     @relation(fields: [userId], references: [id])
-  metric        String   // token_efficiency, response_quality, cost_per_request
-  value         Float
-  model         String
-  timestamp     DateTime @default(now())
-
-  @@index([metric, timestamp])
+  @@index([tenantId, timestamp])
   @@index([userId, timestamp])
   @@map("performance_metrics")
+}
+
+model PerformanceAlert {
+  id           String   @id @default(cuid())
+  tenantId     String?
+  type         String   // cost_spike, quality_drop, performance_degradation, error_rate_high
+  severity     String   // low, medium, high, critical
+  message      String
+  metrics      Json     // Related metrics data
+  threshold    Float
+  currentValue Float
+  timestamp    DateTime @default(now())
+  resolved     Boolean  @default(false)
+  resolvedAt   DateTime?
+  resolvedBy   String?
+
+  @@index([tenantId, resolved])
+  @@index([severity, timestamp])
+  @@map("performance_alerts")
+}
+
+model ComplianceReport {
+  id             String   @id @default(cuid())
+  tenantId       String
+  type           String   // gdpr, hipaa, sox, iso27001, pci
+  periodStart    DateTime
+  periodEnd      DateTime
+  totalEvents    Int
+  criticalEvents Int
+  findings       Json     // Array of findings
+  recommendations Json    // Array of recommendations
+  status         String   // passed, failed, needs_attention
+  generatedBy    String
+  signature      String   // Report signature for integrity
+  reportData     Json     // Full report data
+  createdAt      DateTime @default(now())
+
+  @@index([tenantId, type])
+  @@map("compliance_reports")
+}
+
+model ComplianceMetrics {
+  id            String   @id @default(cuid())
+  tenantId      String
+  date          String   // YYYY-MM-DD format
+  totalEvents   Int      @default(0)
+  criticalEvents Int     @default(0)
+  failedEvents  Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([tenantId, date])
+  @@map("compliance_metrics")
+}
+
+model AuditArchive {
+  id           String   @id @default(cuid())
+  originalId   String
+  tenantId     String?
+  archiveData  Json     // Complete audit log data
+  archiveReason String
+  archivedAt   DateTime @default(now())
+
+  @@index([originalId])
+  @@map("audit_archive")
+}
+
+model DataRetentionPolicy {
+  id                    String   @id @default(cuid())
+  tenantId              String
+  resourceType          String
+  retentionPeriod       Int      // days
+  archivalPolicy        String   // delete, archive, anonymize
+  complianceRequirement String
+  isActive              Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@unique([tenantId, resourceType])
+  @@map("data_retention_policies")
+}
+
+model TenantRegionMapping {
+  id                     String   @id @default(cuid())
+  tenantId               String   @unique
+  primaryRegion          String
+  backupRegions          String[]
+  dataClassification     String   // public, internal, confidential, restricted
+  complianceRequirements String[]
+  dataTypes              String[]
+  migrationHistory       Json     @default("[]")
+  lastValidated          DateTime @default(now())
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  @@map("tenant_region_mappings")
+}
+
+model DataMigration {
+  id                String   @id @default(cuid())
+  tenantId          String
+  fromRegion        String
+  toRegion          String
+  dataTypes         String[]
+  status            String   // pending, in_progress, completed, failed, cancelled
+  startedAt         DateTime @default(now())
+  completedAt       DateTime?
+  progress          Int      @default(0)
+  estimatedSize     BigInt
+  actualSize        BigInt?
+  validationResults Json?
+  approvals         Json     // { requestedBy, approvedBy, approvedAt, reason }
+  createdAt         DateTime @default(now())
+
+  @@index([tenantId, status])
+  @@map("data_migrations")
+}
+
+model DataGovernancePolicy {
+  id                   String   @id @default(cuid())
+  tenantId             String?  // null for global policies
+  name                 String
+  description          String
+  rules                Json     // Array of governance rules
+  enforcementLevel     String   // advisory, warning, blocking
+  complianceFramework  String[]
+  isActive             Boolean  @default(true)
+  createdBy            String
+  updatedBy            String
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([tenantId, isActive])
+  @@map("data_governance_policies")
 }
 
 // 11. Revenue & Payouts

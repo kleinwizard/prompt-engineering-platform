@@ -28,6 +28,16 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { SearchModule } from './modules/search/search.module';
 import { StorageModule } from './modules/storage/storage.module';
 
+// New Phase 1-3 modules
+import { WorkflowsModule } from './modules/workflows/workflows.module';
+import { CertificationModule } from './modules/certification/certification.module';
+import { PromptBuilderModule } from './modules/prompt-builder/prompt-builder.module';
+import { DnaAnalysisModule } from './modules/dna-analysis/dna-analysis.module';
+import { GitModule } from './modules/version-control/git.module';
+import { MarketplaceModule } from './modules/marketplace/marketplace.module';
+import { SecurityModule } from './modules/security/security.module';
+import { CustomModelsModule } from './modules/custom-models/custom-models.module';
+
 // Health check
 import { HealthModule } from './health/health.module';
 
@@ -107,6 +117,16 @@ import { HealthModule } from './health/health.module';
     NotificationsModule,
     SearchModule,
     StorageModule,
+
+    // New Phase 1-3 modules
+    WorkflowsModule,
+    CertificationModule,
+    PromptBuilderModule,
+    DnaAnalysisModule,
+    GitModule,
+    MarketplaceModule,
+    SecurityModule,
+    CustomModelsModule,
 
     // Health check
     HealthModule,
