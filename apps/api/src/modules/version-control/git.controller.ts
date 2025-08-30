@@ -241,13 +241,17 @@ export class GitController {
     @Query('author') author?: string,
     @Query('since') since?: string,
     @Query('until') until?: string,
-    @Query('limit') limit?: string
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string
   ) {
-    // Implementation would return filtered commit log
-    return {
-      commits: [],
-      filters: { branch, author, since, until, limit }
-    };
+    return this.gitService.getCommitLog(repoId, {
+      branch,
+      author,
+      since,
+      until,
+      limit: limit ? parseInt(limit) : 50,
+      offset: offset ? parseInt(offset) : 0
+    });
   }
 
   @Get('repositories/:id/graph')
