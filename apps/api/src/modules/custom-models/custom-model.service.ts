@@ -378,7 +378,7 @@ export class CustomModelService {
     let filteredModels = models;
     if (filters.capability) {
       filteredModels = models.filter(model => 
-        model.capabilities[filters.capability] === true
+        model.capabilities && model.capabilities[filters.capability] === true
       );
     }
 
@@ -410,6 +410,9 @@ export class CustomModelService {
     
     try {
       // Decrypt credentials
+      if (!model.authentication) {
+        throw new Error('Model authentication not configured');
+      }
       const credentials = this.decryptCredentials(model.authentication.credentials);
       
       // Test endpoint
@@ -1122,10 +1125,10 @@ export class CustomModelService {
       type: model.type,
       provider: model.provider,
       endpoint: model.endpoint,
-      authentication: {
+      authentication: model.authentication ? {
         type: model.authentication.type,
         credentials: this.decryptCredentials(model.authentication.credentials)
-      },
+      } : null,
       capabilities: model.capabilities,
       parameters: model.parameters
     };

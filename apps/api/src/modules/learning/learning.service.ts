@@ -110,6 +110,10 @@ export class LearningService {
       });
     });
 
+    if (!path) {
+      throw new Error('Failed to create learning path');
+    }
+
     this.logger.log(`Learning path created: ${path.name} (${path.id})`);
 
     // Emit path created event

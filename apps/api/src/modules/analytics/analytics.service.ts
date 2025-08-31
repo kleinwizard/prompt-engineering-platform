@@ -572,7 +572,7 @@ export class AnalyticsService {
 
   // User analytics helper methods
   
-  private async getUserBasicStats(userId: string, startDate: Date, endDate: Date): Promise<any> {
+  private async getUserBasicStats(userId: string, _startDate: Date, _endDate: Date): Promise<any> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: {
@@ -683,7 +683,7 @@ export class AnalyticsService {
 
     const avgScore = submissions.reduce((sum, s) => sum + s.score, 0) / (submissions.length || 1);
     const bestRank = submissions.length > 0 ? Math.min(...submissions.map(s => s.rank).filter(r => r !== null)) : null;
-    const won = submissions.filter(s => s.rank <= 3).length;
+    const won = submissions.filter(s => s.rank !== null && s.rank <= 3).length;
 
     return {
       participated: participations.length,
@@ -726,7 +726,7 @@ export class AnalyticsService {
     const totalTime = completions.reduce((sum, c) => sum + (c.timeSpent || 0), 0);
     const avgQuizScore = lessonProgress
       .filter(lp => lp.score !== null)
-      .reduce((sum, lp) => sum + lp.score, 0) / (lessonProgress.filter(lp => lp.score !== null).length || 1);
+      .reduce((sum, lp) => sum + (lp.score as number), 0) / (lessonProgress.filter(lp => lp.score !== null).length || 1);
 
     // Calculate learning streak
     const streakDays = await this.calculateLearningStreak(userId);
@@ -1117,7 +1117,7 @@ export class AnalyticsService {
     // Get analytics events for engagement metrics
     const engagementEvents = await this.prisma.analyticsEvent.findMany({
       where: {
-        createdAt: dateFilter.createdAt,
+        timestamp: dateFilter.createdAt,
         event: {
           in: ['prompt.executed', 'template.used', 'user.login', 'prompt.shared']
         },
@@ -1125,7 +1125,7 @@ export class AnalyticsService {
       select: {
         event: true,
         userId: true,
-        createdAt: true,
+        timestamp: true,
       },
     });
 
@@ -1153,7 +1153,7 @@ export class AnalyticsService {
     // Get learning-related analytics events
     const learningEvents = await this.prisma.analyticsEvent.findMany({
       where: {
-        createdAt: {
+        timestamp: {
           gte: startDate,
           lte: endDate,
         },
@@ -1191,7 +1191,7 @@ export class AnalyticsService {
     // Get subscription analytics for revenue tracking
     const subscriptionEvents = await this.prisma.analyticsEvent.findMany({
       where: {
-        createdAt: {
+        timestamp: {
           gte: startDate,
           lte: endDate,
         },
@@ -1237,7 +1237,7 @@ export class AnalyticsService {
     // Get performance-related analytics events
     const performanceEvents = await this.prisma.analyticsEvent.findMany({
       where: {
-        createdAt: {
+        timestamp: {
           gte: startDate,
           lte: endDate,
         },
@@ -1907,8 +1907,8 @@ export class AnalyticsService {
           createdAt: { gte: startDate, lte: endDate },
         },
         select: {
-          score: true,
-          passed: true,
+          scores: true,
+          overallScore: true,
           skill: {
             select: {
               name: true,
@@ -1928,11 +1928,11 @@ export class AnalyticsService {
       : 0;
 
     const avgAssessmentScore = assessmentScores.length > 0
-      ? assessmentScores.reduce((sum, as) => sum + as.score, 0) / assessmentScores.length
+      ? assessmentScores.reduce((sum, as) => sum + as.overallScore, 0) / assessmentScores.length
       : 0;
 
     const assessmentPassRate = assessmentScores.length > 0
-      ? (assessmentScores.filter(as => as.passed).length / assessmentScores.length) * 100
+      ? (assessmentScores.filter(as => as.overallScore >= 70).length / assessmentScores.length) * 100
       : 0;
 
     return {
