@@ -8,7 +8,7 @@ import {
   ConnectedSocket,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { Logger, UseGuards } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../database/prisma.service';
@@ -26,11 +26,11 @@ interface AuthenticatedSocket extends Socket {
   },
   namespace: '/',
 })
-export class WebSocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class PromptPlatformWebSocketGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
-  server: Server;
+  server!: Server;
 
-  private readonly logger = new Logger(WebSocketGateway.name);
+  private readonly logger = new Logger(PromptPlatformWebSocketGateway.name);
   private activeUsers = new Map<string, AuthenticatedSocket>();
 
   constructor(
@@ -101,10 +101,8 @@ export class WebSocketGateway implements OnGatewayConnection, OnGatewayDisconnec
         });
       }
 
-      // Track activity
-      await this.gamificationService.trackActivity({
-        userId: user.id,
-        type: 'session_start',
+      // Track activity by awarding points for session start
+      await this.gamificationService.awardPoints(user.id, 'session_start' as any, {
         timestamp: new Date()
       });
 

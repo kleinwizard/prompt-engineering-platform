@@ -1150,7 +1150,11 @@ export class UsersService {
 
     return Object.entries(dailyBreakdown).map(([date, activities]) => ({
       date,
-      ...activities,
+      prompts: activities.prompts,
+      templates: activities.templates,
+      lessons: activities.lessons,
+      challenges: activities.challenges,
+      comments: activities.comments,
     }));
   }
 }

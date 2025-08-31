@@ -1032,7 +1032,9 @@ export class PromptsService {
 
     return Object.entries(timeSeriesData).map(([date, metrics]) => ({
       date,
-      ...metrics,
+      views: metrics.views,
+      executions: metrics.executions,
+      improvements: metrics.improvements,
     }));
   }
 

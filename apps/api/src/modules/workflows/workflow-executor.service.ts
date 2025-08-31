@@ -53,8 +53,11 @@ export class WorkflowExecutorService {
     });
 
     try {
+      const workflowVars = workflow.variables as Record<string, any> || {};
+      const inputVars = inputs as Record<string, any> || {};
+      
       const executionContext: ExecutionContext = {
-        variables: { ...(workflow.variables || {}), ...(inputs || {}) },
+        variables: { ...workflowVars, ...inputVars },
         outputs: {},
         executedNodes: new Set<string>()
       };

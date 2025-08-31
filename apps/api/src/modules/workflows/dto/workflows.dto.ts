@@ -2,7 +2,7 @@ import { IsString, IsOptional, IsBoolean, IsArray, IsObject } from 'class-valida
 
 export class CreateWorkflowDto {
   @IsString()
-  name: string;
+  name!: string;
 
   @IsOptional()
   @IsString()
@@ -61,13 +61,13 @@ export class UpdateWorkflowDto {
 
 export class WorkflowNodeDto {
   @IsString()
-  type: string; // prompt, condition, merge, split, loop, transform
+  type!: string; // prompt, condition, merge, split, loop, transform
 
   @IsObject()
-  position: { x: number; y: number };
+  position!: { x: number; y: number };
 
   @IsObject()
-  data: Record<string, any>;
+  data!: Record<string, any>;
 
   @IsOptional()
   @IsArray()
@@ -76,10 +76,10 @@ export class WorkflowNodeDto {
 
 export class WorkflowEdgeDto {
   @IsString()
-  sourceId: string;
+  sourceId!: string;
 
   @IsString()
-  targetId: string;
+  targetId!: string;
 
   @IsOptional()
   @IsString()
@@ -92,5 +92,5 @@ export class WorkflowEdgeDto {
 
 export class ExecuteWorkflowDto {
   @IsObject()
-  inputs: Record<string, any>;
+  inputs!: Record<string, any>;
 }
