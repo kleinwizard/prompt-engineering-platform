@@ -149,6 +149,9 @@ export interface CommunityAnalytics {
   engagement?: any;
   moderation?: any;
   activity?: any;
+  interactions?: any;
+  influencers?: any;
+  health?: any;
   postsCount: number;
   commentsCount: number;
   activeDiscussions: number;

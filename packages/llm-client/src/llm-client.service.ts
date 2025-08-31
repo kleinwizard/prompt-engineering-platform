@@ -37,7 +37,9 @@ export class LLMClientService {
     try {
       return await provider.complete(request);
     } catch (error) {
-      this.logger.error(`LLM completion failed: ${error.message}`, error.stack);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`LLM completion failed: ${errorMessage}`, errorStack);
       throw error;
     }
   }

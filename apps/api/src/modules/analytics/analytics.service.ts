@@ -383,6 +383,9 @@ export class AnalyticsService {
       moderation: moderationMetrics,
       influencers: await this.getInfluencerMetrics(startDate, endDate),
       health: await this.getCommunityHealthScore(startDate, endDate),
+      postsCount: contentMetrics.posts || 0,
+      commentsCount: contentMetrics.comments || 0,
+      activeDiscussions: contentMetrics.discussions || 0,
     };
 
     this.setCache(cacheKey, analytics, this.CACHE_TTL.hourly);
@@ -779,7 +782,7 @@ export class AnalyticsService {
     });
 
     // Group by day for daily breakdown
-    const dailyBreakdown = {};
+    const dailyBreakdown: Record<string, number> = {};
     const peakHours = Array(24).fill(0);
     let totalTimeSpent = 0;
 
@@ -942,6 +945,7 @@ export class AnalyticsService {
     currentDate.setHours(23, 59, 59, 999);
 
     for (const completion of completions) {
+      if (!completion.completedAt) continue;
       const completionDate = new Date(completion.completedAt);
       completionDate.setHours(23, 59, 59, 999);
 

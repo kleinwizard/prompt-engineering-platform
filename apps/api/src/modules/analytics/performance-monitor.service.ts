@@ -78,7 +78,7 @@ export interface PerformanceAlert {
   resolved: boolean;
 }
 
-interface OptimizationSuggestion {
+export interface OptimizationSuggestion {
   type: 'token_optimization' | 'model_switch' | 'prompt_improvement' | 'caching';
   title: string;
   description: string;

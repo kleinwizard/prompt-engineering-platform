@@ -54,7 +54,7 @@ export class WorkflowExecutorService {
 
     try {
       const executionContext: ExecutionContext = {
-        variables: { ...workflow.variables, ...inputs },
+        variables: { ...(workflow.variables || {}), ...(inputs || {}) },
         outputs: {},
         executedNodes: new Set<string>()
       };
@@ -86,7 +86,7 @@ export class WorkflowExecutorService {
             inputs: this.getNodeInputs(node, executionContext),
             outputs: {},
             duration: Date.now() - startTime,
-            error: error.message
+            error: error instanceof Error ? error.message : String(error)
           });
 
           throw error;
@@ -125,7 +125,7 @@ export class WorkflowExecutorService {
       await this.prisma.workflowExecution.update({
         where: { id: execution.id },
         data: {
-          error: error.message,
+          error: error instanceof Error ? error.message : String(error),
           status: 'failed',
           completedAt: new Date(),
           duration: Date.now() - execution.startedAt.getTime()
@@ -212,7 +212,7 @@ export class WorkflowExecutorService {
 
   private evaluateConditionSafely(condition: string, vars: any, outputs: any): boolean {
     // Safe evaluation using predefined condition patterns
-    const safeConditions = {
+    const safeConditions: Record<string, () => boolean> = {
       'true': () => true,
       'false': () => false,
       'vars.length > 0': () => Object.keys(vars).length > 0,
@@ -222,8 +222,9 @@ export class WorkflowExecutorService {
     };
 
     // Check if it's a predefined safe condition
-    if (safeConditions[condition]) {
-      return safeConditions[condition]();
+    const conditionFn = safeConditions[condition];
+    if (conditionFn) {
+      return conditionFn();
     }
 
     // For unsupported conditions, default to false and log
@@ -237,7 +238,7 @@ export class WorkflowExecutorService {
 
     try {
       // Safe transform execution using predefined transform functions
-      const result = this.executeTransformSafely(transformCode, inputValue, context.variables, context.outputs);
+      const result = this.executeTransformSafely(transformCode, inputValue);
       context.outputs[node.id] = result;
       
       if (node.data.outputVariable) {
@@ -248,9 +249,9 @@ export class WorkflowExecutorService {
     }
   }
 
-  private executeTransformSafely(transformCode: string, input: any, vars: any, outputs: any): any {
+  private executeTransformSafely(transformCode: string, input: any): any {
     // Safe transform operations using predefined functions
-    const safeTransforms = {
+    const safeTransforms: Record<string, () => any> = {
       'return input.toUpperCase()': () => String(input).toUpperCase(),
       'return input.toLowerCase()': () => String(input).toLowerCase(),
       'return input.trim()': () => String(input).trim(),
@@ -261,8 +262,9 @@ export class WorkflowExecutorService {
     };
 
     // Check if it's a predefined safe transform
-    if (safeTransforms[transformCode]) {
-      return safeTransforms[transformCode]();
+    const transform = safeTransforms[transformCode];
+    if (transform) {
+      return transform();
     }
 
     // For unsupported transforms, return input unchanged and log
