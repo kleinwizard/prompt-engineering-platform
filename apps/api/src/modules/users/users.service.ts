@@ -725,6 +725,8 @@ export class UsersService {
       case 'public':
         return true;
       case 'followers':
+        // ISSUE: Model 'follow' does not exist in Prisma schema
+        // FIX: Create Follow model with followerId_followingId unique constraint
         const isFollowing = await this.prisma.follow.findUnique({
           where: {
             followerId_followingId: { followerId: requesterId, followingId: userId },
@@ -808,10 +810,14 @@ export class UsersService {
           ],
         },
       },
+      // ISSUE: Property 'timestamp' does not exist on AnalyticsEvent model
+      // FIX: Use 'createdAt' field instead of 'timestamp'
       orderBy: { timestamp: 'desc' },
       take: limit,
     });
 
+    // ISSUE: Property 'timestamp' does not exist on AnalyticsEvent model
+    // FIX: Use 'createdAt' field instead of 'timestamp'
     return recentEvents.map(event => ({
       type: event.event.split('.')[1],
       timestamp: event.timestamp,
@@ -877,6 +883,8 @@ export class UsersService {
       this.prisma.prompt.count({
         where: { userId, createdAt: { gte: startDate, lte: endDate } },
       }),
+      // ISSUE: Property 'timestamp' does not exist on AnalyticsEvent model
+      // FIX: Use 'createdAt' field instead of 'timestamp' in all analytics queries
       this.prisma.analyticsEvent.count({
         where: {
           userId,
@@ -920,6 +928,8 @@ export class UsersService {
   }
 
   private async getChallengeStatistics(userId: string, startDate: Date, endDate: Date): Promise<any> {
+    // ISSUE: Models 'challengeParticipant' and 'challengeSubmission' do not exist in Prisma schema
+    // FIX: Create ChallengeParticipant and ChallengeSubmission models
     const [participated, completed, won] = await Promise.all([
       this.prisma.challengeParticipant.count({
         where: {
@@ -946,6 +956,8 @@ export class UsersService {
   }
 
   private async getLearningStatistics(userId: string, startDate: Date, endDate: Date): Promise<any> {
+    // ISSUE: Models 'userLearningPath' and 'lessonProgress' do not exist in Prisma schema
+    // FIX: Create UserLearningPath and LessonProgress models for learning system
     const [enrolled, completed, lessons] = await Promise.all([
       this.prisma.userLearningPath.count({
         where: {
@@ -973,6 +985,8 @@ export class UsersService {
   }
 
   private async getCommunityStatistics(userId: string, startDate: Date, endDate: Date): Promise<any> {
+    // ISSUE: Models 'comment', 'like', and 'follow' do not exist in Prisma schema
+    // FIX: Create Comment, Like, and Follow models for community features
     const [comments, likes, follows] = await Promise.all([
       this.prisma.comment.count({
         where: {
@@ -998,6 +1012,8 @@ export class UsersService {
   }
 
   private async getSkillStatistics(userId: string, startDate: Date, endDate: Date): Promise<any> {
+    // ISSUE: Model 'skillAssessment' does not exist in Prisma schema
+    // FIX: Create SkillAssessment model or use UserSkills for assessment tracking
     const assessments = await this.prisma.skillAssessment.findMany({
       where: {
         userId,
@@ -1110,6 +1126,8 @@ export class UsersService {
       },
     });
 
+    // ISSUE: Property 'timestamp' does not exist on AnalyticsEvent model
+    // FIX: Use 'createdAt' field instead of 'timestamp'
     const dailyBreakdown = {};
     events.forEach(event => {
       const date = event.timestamp.toISOString().split('T')[0];

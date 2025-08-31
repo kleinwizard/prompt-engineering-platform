@@ -523,6 +523,7 @@ export class EmailService {
 
   private async logEmailFailed(item: EmailQueueItem): Promise<void> {
     try {
+      // Log failed email attempt
       await this.prisma.emailLog.create({
         data: {
           to: Array.isArray(item.to) ? item.to.join(', ') : item.to,

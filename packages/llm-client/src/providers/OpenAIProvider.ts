@@ -1,9 +1,9 @@
-// import OpenAI from 'openai'; // Temporarily commented out for compilation
+import OpenAI from 'openai';
 import { BaseProvider } from './BaseProvider';
 import { LLMRequest, LLMResponse, LLMStreamChunk, ModelInfo, LLMConfig } from '../types';
 
 export class OpenAIProvider extends BaseProvider {
-  private client: any; // OpenAI;
+  private client: OpenAI;
   private models: ModelInfo[] = [
     {
       id: 'gpt-4',
@@ -57,12 +57,11 @@ export class OpenAIProvider extends BaseProvider {
 
   constructor(config: LLMConfig) {
     super(config);
-    this.client = {} as any; // Temporarily disabled OpenAI client
-    // this.client = new OpenAI({
-    //   apiKey: config.apiKey,
-    //   organization: config.organization,
-    //   timeout: config.timeout || 60000,
-    // });
+    this.client = new OpenAI({
+      apiKey: config.apiKey,
+      organization: config.organization,
+      timeout: config.timeout || 60000,
+    });
   }
 
   getProviderName(): string {

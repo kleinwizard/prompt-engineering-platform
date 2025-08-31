@@ -4,7 +4,7 @@ import { ValidationPipe, Logger } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
-import * as compression from 'compression';
+import compression from 'compression';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { RequestLoggingInterceptor } from './common/interceptors/request-logging.interceptor';
 

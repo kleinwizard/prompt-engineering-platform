@@ -3,7 +3,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../database/prisma.service';
 import { GamificationService } from '../gamification/gamification.service';
 import { PromptImprovementEngine } from '@prompt-platform/prompt-engine';
-import { LLMClientService } from '../integrations/llm-client.service';
+import { LLMClientService } from '@llm-client/llm-client.service';
 import { SearchService } from '../search/search.service';
 import {
   CreatePromptDto,
@@ -668,6 +668,8 @@ export class PromptsService {
     // Get user's interaction history
     const userInteractions = await this.getUserInteractionHistory(userId);
     
+    // ISSUE: Model 'userSkills' does not exist in Prisma schema
+    // FIX: Create UserSkills model or use UserProfile model instead
     // Get user's skill profile
     const userSkills = await this.prisma.userSkills.findUnique({
       where: { userId },
@@ -1009,11 +1011,15 @@ export class PromptsService {
           equals: promptId,
         },
       },
+      // ISSUE: Property 'timestamp' does not exist on AnalyticsEvent model
+      // FIX: Use 'createdAt' field instead of 'timestamp'
       orderBy: { timestamp: 'asc' },
     });
 
     const timeSeriesData = {};
     events.forEach(event => {
+      // ISSUE: Property 'timestamp' does not exist on AnalyticsEvent model
+      // FIX: Use 'createdAt' field instead of 'timestamp'
       const date = event.timestamp.toISOString().split('T')[0];
       if (!timeSeriesData[date]) {
         timeSeriesData[date] = { views: 0, executions: 0, improvements: 0 };
@@ -1063,6 +1069,8 @@ export class PromptsService {
         event: { in: ['prompt.viewed', 'prompt.liked', 'prompt.forked', 'prompt.executed'] },
       },
       take: 100,
+      // ISSUE: Property 'timestamp' does not exist on AnalyticsEvent model
+      // FIX: Use 'createdAt' field instead of 'timestamp'
       orderBy: { timestamp: 'desc' },
     });
 

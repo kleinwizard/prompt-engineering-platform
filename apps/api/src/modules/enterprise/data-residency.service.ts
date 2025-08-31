@@ -3,7 +3,7 @@ import { PrismaService } from '../../database/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import { PrismaClient } from '@prisma/client';
 
-interface RegionConfig {
+export interface RegionConfig {
   id: string;
   name: string;
   code: string; // us-east-1, eu-west-1, ap-south-1
@@ -34,7 +34,7 @@ interface RegionConfig {
   };
 }
 
-interface TenantRegionMapping {
+export interface TenantRegionMapping {
   tenantId: string;
   primaryRegion: string;
   backupRegions: string[];
@@ -45,7 +45,7 @@ interface TenantRegionMapping {
   lastValidated: Date;
 }
 
-interface DataMigration {
+export interface DataMigration {
   id: string;
   tenantId: string;
   fromRegion: string;
@@ -70,7 +70,7 @@ interface DataMigration {
   };
 }
 
-interface DataGovernancePolicy {
+export interface DataGovernancePolicy {
   id: string;
   tenantId?: string; // null for global policies
   name: string;

@@ -289,7 +289,8 @@ export class AuditService {
 
   private async sendToSecurityMonitoring(data: any) {
     try {
-      // Send to internal security monitoring
+      // ISSUE: Model 'securityEvent' does not exist in Prisma schema
+      // FIX: Create SecurityEvent model or use existing AuditLog/Event model
       await this.prisma.securityEvent.create({
         data: {
           type: 'audit_event',

@@ -66,7 +66,7 @@ interface PerformanceMetrics {
   };
 }
 
-interface PerformanceAlert {
+export interface PerformanceAlert {
   id: string;
   type: 'cost_spike' | 'quality_drop' | 'performance_degradation' | 'error_rate_high';
   severity: 'low' | 'medium' | 'high' | 'critical';
@@ -221,23 +221,23 @@ export class PerformanceMonitorService {
 
     return {
       current: {
-        tokenEfficiency: latest.tokenEfficiency.efficiency,
-        responseQuality: latest.responseQuality.overall,
-        costPerRequest: latest.cost.costPerRequest,
-        responseTime: latest.performance.responseTime,
-        errorRate: latest.performance.errorRate
+        tokenEfficiency: (latest.tokenEfficiency as any)?.efficiency || 0,
+        responseQuality: (latest.responseQuality as any)?.overall || 0,
+        costPerRequest: (latest.cost as any)?.costPerRequest || 0,
+        responseTime: (latest.performance as any)?.responseTime || 0,
+        errorRate: (latest.performance as any)?.errorRate || 0
       },
       trends: {
-        tokenEfficiency: this.calculateTrend(metrics.map(m => m.tokenEfficiency.efficiency)),
-        responseQuality: this.calculateTrend(metrics.map(m => m.responseQuality.overall)),
-        costPerRequest: this.calculateTrend(metrics.map(m => m.cost.costPerRequest)),
-        responseTime: this.calculateTrend(metrics.map(m => m.performance.responseTime))
+        tokenEfficiency: this.calculateTrend(metrics.map(m => (m.tokenEfficiency as any)?.efficiency || 0)),
+        responseQuality: this.calculateTrend(metrics.map(m => (m.responseQuality as any)?.overall || 0)),
+        costPerRequest: this.calculateTrend(metrics.map(m => (m.cost as any)?.costPerRequest || 0)),
+        responseTime: this.calculateTrend(metrics.map(m => (m.performance as any)?.responseTime || 0))
       },
       sparklines: {
-        tokenEfficiency: metrics.slice(0, 20).reverse().map(m => m.tokenEfficiency.efficiency),
-        responseQuality: metrics.slice(0, 20).reverse().map(m => m.responseQuality.overall),
-        cost: metrics.slice(0, 20).reverse().map(m => m.cost.costPerRequest),
-        responseTime: metrics.slice(0, 20).reverse().map(m => m.performance.responseTime)
+        tokenEfficiency: metrics.slice(0, 20).reverse().map(m => (m.tokenEfficiency as any)?.efficiency || 0),
+        responseQuality: metrics.slice(0, 20).reverse().map(m => (m.responseQuality as any)?.overall || 0),
+        cost: metrics.slice(0, 20).reverse().map(m => (m.cost as any)?.costPerRequest || 0),
+        responseTime: metrics.slice(0, 20).reverse().map(m => (m.performance as any)?.responseTime || 0)
       }
     };
   }
@@ -254,17 +254,17 @@ export class PerformanceMonitorService {
       return { averageEfficiency: 0, trends: [], distribution: [] };
     }
 
-    const efficiencies = metrics.map(m => m.tokenEfficiency.efficiency);
-    const totalTokens = metrics.reduce((sum, m) => sum + m.tokenEfficiency.totalTokens, 0);
-    const wastedTokens = metrics.reduce((sum, m) => sum + m.tokenEfficiency.wastedTokens, 0);
+    const efficiencies = metrics.map(m => (m.tokenEfficiency as any)?.efficiency || 0);
+    const totalTokens = metrics.reduce((sum, m) => sum + ((m.tokenEfficiency as any)?.totalTokens || 0), 0);
+    const wastedTokens = metrics.reduce((sum, m) => sum + ((m.tokenEfficiency as any)?.wastedTokens || 0), 0);
 
     // Time series data for charts
     const timeSeries = this.groupByTimeInterval(metrics, endDate.getTime() - startDate.getTime())
       .map(group => ({
         timestamp: group.timestamp,
-        efficiency: group.metrics.reduce((sum, m) => sum + m.tokenEfficiency.efficiency, 0) / group.metrics.length,
-        totalTokens: group.metrics.reduce((sum, m) => sum + m.tokenEfficiency.totalTokens, 0),
-        wastedTokens: group.metrics.reduce((sum, m) => sum + m.tokenEfficiency.wastedTokens, 0)
+        efficiency: group.metrics.reduce((sum, m) => sum + ((m.tokenEfficiency as any)?.efficiency || 0), 0) / group.metrics.length,
+        totalTokens: group.metrics.reduce((sum, m) => sum + ((m.tokenEfficiency as any)?.totalTokens || 0), 0),
+        wastedTokens: group.metrics.reduce((sum, m) => sum + ((m.tokenEfficiency as any)?.wastedTokens || 0), 0)
       }));
 
     // Efficiency distribution
@@ -272,13 +272,13 @@ export class PerformanceMonitorService {
 
     // Top inefficient prompts
     const inefficientPrompts = metrics
-      .filter(m => m.tokenEfficiency.efficiency < 0.5)
-      .sort((a, b) => a.tokenEfficiency.efficiency - b.tokenEfficiency.efficiency)
+      .filter(m => ((m.tokenEfficiency as any)?.efficiency || 0) < 0.5)
+      .sort((a, b) => ((a.tokenEfficiency as any)?.efficiency || 0) - ((b.tokenEfficiency as any)?.efficiency || 0))
       .slice(0, 10)
       .map(m => ({
         promptId: m.id,
-        efficiency: m.tokenEfficiency.efficiency,
-        wastedTokens: m.tokenEfficiency.wastedTokens,
+        efficiency: (m.tokenEfficiency as any)?.efficiency || 0,
+        wastedTokens: (m.tokenEfficiency as any)?.wastedTokens || 0,
         timestamp: m.timestamp
       }));
 
@@ -306,41 +306,41 @@ export class PerformanceMonitorService {
       return { averageQuality: 0, breakdown: {}, trends: [] };
     }
 
-    const qualities = metrics.map(m => m.responseQuality.overall);
+    const qualities = metrics.map(m => (m.responseQuality as any)?.overall || 0);
     const averageQuality = qualities.reduce((sum, q) => sum + q, 0) / qualities.length;
 
     // Quality breakdown by dimensions
     const breakdown = {
-      accuracy: metrics.reduce((sum, m) => sum + m.responseQuality.accuracy, 0) / metrics.length,
-      relevance: metrics.reduce((sum, m) => sum + m.responseQuality.relevance, 0) / metrics.length,
-      completeness: metrics.reduce((sum, m) => sum + m.responseQuality.completeness, 0) / metrics.length,
-      clarity: metrics.reduce((sum, m) => sum + m.responseQuality.clarity, 0) / metrics.length
+      accuracy: metrics.reduce((sum, m) => sum + ((m.responseQuality as any)?.accuracy || 0), 0) / metrics.length,
+      relevance: metrics.reduce((sum, m) => sum + ((m.responseQuality as any)?.relevance || 0), 0) / metrics.length,
+      completeness: metrics.reduce((sum, m) => sum + ((m.responseQuality as any)?.completeness || 0), 0) / metrics.length,
+      clarity: metrics.reduce((sum, m) => sum + ((m.responseQuality as any)?.clarity || 0), 0) / metrics.length
     };
 
     // Quality trends over time
     const timeSeries = this.groupByTimeInterval(metrics, endDate.getTime() - startDate.getTime())
       .map(group => ({
         timestamp: group.timestamp,
-        quality: group.metrics.reduce((sum, m) => sum + m.responseQuality.overall, 0) / group.metrics.length,
-        accuracy: group.metrics.reduce((sum, m) => sum + m.responseQuality.accuracy, 0) / group.metrics.length,
-        relevance: group.metrics.reduce((sum, m) => sum + m.responseQuality.relevance, 0) / group.metrics.length,
-        completeness: group.metrics.reduce((sum, m) => sum + m.responseQuality.completeness, 0) / group.metrics.length,
-        clarity: group.metrics.reduce((sum, m) => sum + m.responseQuality.clarity, 0) / group.metrics.length
+        quality: group.metrics.reduce((sum, m) => sum + ((m.responseQuality as any)?.overall || 0), 0) / group.metrics.length,
+        accuracy: group.metrics.reduce((sum, m) => sum + ((m.responseQuality as any)?.accuracy || 0), 0) / group.metrics.length,
+        relevance: group.metrics.reduce((sum, m) => sum + ((m.responseQuality as any)?.relevance || 0), 0) / group.metrics.length,
+        completeness: group.metrics.reduce((sum, m) => sum + ((m.responseQuality as any)?.completeness || 0), 0) / group.metrics.length,
+        clarity: group.metrics.reduce((sum, m) => sum + ((m.responseQuality as any)?.clarity || 0), 0) / group.metrics.length
       }));
 
     // Quality by model
     const modelQuality = this.groupBy(metrics, 'model.name')
       .map(([modelName, modelMetrics]) => ({
         model: modelName,
-        quality: modelMetrics.reduce((sum, m) => sum + m.responseQuality.overall, 0) / modelMetrics.length,
+        quality: modelMetrics.reduce((sum, m) => sum + ((m.responseQuality as any)?.overall || 0), 0) / modelMetrics.length,
         count: modelMetrics.length
       }))
       .sort((a, b) => b.quality - a.quality);
 
     // Low quality alerts
     const lowQualityPrompts = metrics
-      .filter(m => m.responseQuality.overall < 0.7)
-      .sort((a, b) => a.responseQuality.overall - b.responseQuality.overall)
+      .filter(m => ((m.responseQuality as any)?.overall || 0) < 0.7)
+      .sort((a, b) => ((a.responseQuality as any)?.overall || 0) - ((b.responseQuality as any)?.overall || 0))
       .slice(0, 10);
 
     return {
@@ -366,16 +366,16 @@ export class PerformanceMonitorService {
       return { totalCost: 0, averageCostPerRequest: 0, trends: [] };
     }
 
-    const totalCost = metrics.reduce((sum, m) => sum + m.cost.totalCost, 0);
+    const totalCost = metrics.reduce((sum, m) => sum + ((m.cost as any)?.totalCost || 0), 0);
     const averageCostPerRequest = totalCost / metrics.length;
 
     // Cost breakdown by model
     const modelCosts = this.groupBy(metrics, 'model.name')
       .map(([modelName, modelMetrics]) => ({
         model: modelName,
-        totalCost: modelMetrics.reduce((sum, m) => sum + m.cost.totalCost, 0),
+        totalCost: modelMetrics.reduce((sum, m) => sum + ((m.cost as any)?.totalCost || 0), 0),
         requests: modelMetrics.length,
-        averageCost: modelMetrics.reduce((sum, m) => sum + m.cost.totalCost, 0) / modelMetrics.length
+        averageCost: modelMetrics.reduce((sum, m) => sum + ((m.cost as any)?.totalCost || 0), 0) / modelMetrics.length
       }))
       .sort((a, b) => b.totalCost - a.totalCost);
 
@@ -383,20 +383,20 @@ export class PerformanceMonitorService {
     const timeSeries = this.groupByTimeInterval(metrics, endDate.getTime() - startDate.getTime())
       .map(group => ({
         timestamp: group.timestamp,
-        totalCost: group.metrics.reduce((sum, m) => sum + m.cost.totalCost, 0),
-        averageCost: group.metrics.reduce((sum, m) => sum + m.cost.totalCost, 0) / group.metrics.length,
+        totalCost: group.metrics.reduce((sum, m) => sum + ((m.cost as any)?.totalCost || 0), 0),
+        averageCost: group.metrics.reduce((sum, m) => sum + ((m.cost as any)?.totalCost || 0), 0) / group.metrics.length,
         requests: group.metrics.length
       }));
 
     // Most expensive prompts
     const expensivePrompts = metrics
-      .sort((a, b) => b.cost.totalCost - a.cost.totalCost)
+      .sort((a, b) => ((b.cost as any)?.totalCost || 0) - ((a.cost as any)?.totalCost || 0))
       .slice(0, 10)
       .map(m => ({
         promptId: m.id,
-        cost: m.cost.totalCost,
-        tokens: m.tokenEfficiency.totalTokens,
-        model: m.model.name,
+        cost: (m.cost as any)?.totalCost || 0,
+        tokens: (m.tokenEfficiency as any)?.totalTokens || 0,
+        model: (m.model as any)?.name || 'unknown',
         timestamp: m.timestamp
       }));
 
@@ -411,7 +411,7 @@ export class PerformanceMonitorService {
       expensivePrompts,
       optimizationOpportunities,
       projectedMonthlyCost: this.projectMonthlyCost(timeSeries),
-      costPerToken: totalCost / metrics.reduce((sum, m) => sum + m.tokenEfficiency.totalTokens, 0)
+      costPerToken: totalCost / Math.max(1, metrics.reduce((sum, m) => sum + ((m.tokenEfficiency as any)?.totalTokens || 0), 0))
     };
   }
 
@@ -428,17 +428,17 @@ export class PerformanceMonitorService {
     }
 
     const totalRequests = metrics.length;
-    const averageResponseTime = metrics.reduce((sum, m) => sum + m.performance.responseTime, 0) / metrics.length;
-    const errorRate = metrics.reduce((sum, m) => sum + m.performance.errorRate, 0) / metrics.length;
-    const totalRetries = metrics.reduce((sum, m) => sum + m.performance.retryCount, 0);
-    const totalTimeouts = metrics.reduce((sum, m) => sum + m.performance.timeouts, 0);
+    const averageResponseTime = metrics.reduce((sum, m) => sum + ((m.performance as any)?.responseTime || 0), 0) / metrics.length;
+    const errorRate = metrics.reduce((sum, m) => sum + ((m.performance as any)?.errorRate || 0), 0) / metrics.length;
+    const totalRetries = metrics.reduce((sum, m) => sum + ((m.performance as any)?.retryCount || 0), 0);
+    const totalTimeouts = metrics.reduce((sum, m) => sum + ((m.performance as any)?.timeouts || 0), 0);
 
     // Performance by model
     const modelPerformance = this.groupBy(metrics, 'model.name')
       .map(([modelName, modelMetrics]) => ({
         model: modelName,
-        averageResponseTime: modelMetrics.reduce((sum, m) => sum + m.performance.responseTime, 0) / modelMetrics.length,
-        errorRate: modelMetrics.reduce((sum, m) => sum + m.performance.errorRate, 0) / modelMetrics.length,
+        averageResponseTime: modelMetrics.reduce((sum, m) => sum + ((m.performance as any)?.responseTime || 0), 0) / modelMetrics.length,
+        errorRate: modelMetrics.reduce((sum, m) => sum + ((m.performance as any)?.errorRate || 0), 0) / modelMetrics.length,
         requests: modelMetrics.length
       }))
       .sort((a, b) => a.averageResponseTime - b.averageResponseTime);
@@ -448,8 +448,8 @@ export class PerformanceMonitorService {
       .map(group => ({
         timestamp: group.timestamp,
         requests: group.metrics.length,
-        averageResponseTime: group.metrics.reduce((sum, m) => sum + m.performance.responseTime, 0) / group.metrics.length,
-        errorRate: group.metrics.reduce((sum, m) => sum + m.performance.errorRate, 0) / group.metrics.length,
+        averageResponseTime: group.metrics.reduce((sum, m) => sum + ((m.performance as any)?.responseTime || 0), 0) / group.metrics.length,
+        errorRate: group.metrics.reduce((sum, m) => sum + ((m.performance as any)?.errorRate || 0), 0) / group.metrics.length,
         throughput: group.metrics.length / ((group.timeRange || 3600) / 1000) // requests per second
       }));
 
@@ -477,10 +477,10 @@ export class PerformanceMonitorService {
     const modelGroups = this.groupBy(metrics, 'model.name');
     
     return modelGroups.map(([modelName, modelMetrics]) => {
-      const avgQuality = modelMetrics.reduce((sum, m) => sum + m.responseQuality.overall, 0) / modelMetrics.length;
-      const avgCost = modelMetrics.reduce((sum, m) => sum + m.cost.costPerRequest, 0) / modelMetrics.length;
-      const avgResponseTime = modelMetrics.reduce((sum, m) => sum + m.performance.responseTime, 0) / modelMetrics.length;
-      const avgEfficiency = modelMetrics.reduce((sum, m) => sum + m.tokenEfficiency.efficiency, 0) / modelMetrics.length;
+      const avgQuality = modelMetrics.reduce((sum, m) => sum + ((m.responseQuality as any)?.overall || 0), 0) / modelMetrics.length;
+      const avgCost = modelMetrics.reduce((sum, m) => sum + ((m.cost as any)?.costPerRequest || 0), 0) / modelMetrics.length;
+      const avgResponseTime = modelMetrics.reduce((sum, m) => sum + ((m.performance as any)?.responseTime || 0), 0) / modelMetrics.length;
+      const avgEfficiency = modelMetrics.reduce((sum, m) => sum + ((m.tokenEfficiency as any)?.efficiency || 0), 0) / modelMetrics.length;
       
       return {
         model: modelName,
@@ -490,7 +490,7 @@ export class PerformanceMonitorService {
         responseTime: avgResponseTime,
         efficiency: avgEfficiency,
         score: this.calculateModelScore(avgQuality, avgCost, avgResponseTime, avgEfficiency),
-        provider: modelMetrics[0]?.model.provider || 'unknown'
+        provider: (modelMetrics[0]?.model as any)?.provider || 'unknown'
       };
     }).sort((a, b) => b.score - a.score);
   }
@@ -880,14 +880,14 @@ export class PerformanceMonitorService {
   private generateTokenOptimizationRecommendations(metrics: any[]): string[] {
     const recommendations = [];
     
-    const avgWaste = metrics.reduce((sum, m) => sum + m.tokenEfficiency.wastedTokens, 0) / metrics.length;
+    const avgWaste = metrics.reduce((sum, m) => sum + ((m.tokenEfficiency as any)?.wastedTokens || 0), 0) / metrics.length;
     
     if (avgWaste > 50) {
       recommendations.push('Consider using more concise language in your prompts');
       recommendations.push('Remove redundant instructions and examples');
     }
     
-    if (metrics.some(m => m.tokenEfficiency.efficiency < 0.3)) {
+    if (metrics.some(m => ((m.tokenEfficiency as any)?.efficiency || 0) < 0.3)) {
       recommendations.push('Some prompts have very low efficiency - review for unnecessary verbosity');
     }
     
@@ -897,7 +897,7 @@ export class PerformanceMonitorService {
   private generateQualityImprovementRecommendations(metrics: any[]): string[] {
     const recommendations = [];
     
-    const avgQuality = metrics.reduce((sum, m) => sum + m.responseQuality.overall, 0) / metrics.length;
+    const avgQuality = metrics.reduce((sum, m) => sum + ((m.responseQuality as any)?.overall || 0), 0) / metrics.length;
     
     if (avgQuality < 0.7) {
       recommendations.push('Add more specific context and examples to improve response quality');
@@ -910,7 +910,7 @@ export class PerformanceMonitorService {
   private identifyCostOptimizations(metrics: any[]) {
     const opportunities = [];
     
-    const expensiveModels = metrics.filter(m => m.cost.costPerRequest > 0.05);
+    const expensiveModels = metrics.filter(m => ((m.cost as any)?.costPerRequest || 0) > 0.05);
     if (expensiveModels.length > metrics.length * 0.3) {
       opportunities.push({
         type: 'model_optimization',
@@ -931,12 +931,12 @@ export class PerformanceMonitorService {
 
   private findSlowestPrompts(metrics: any[]) {
     return metrics
-      .sort((a, b) => b.performance.responseTime - a.performance.responseTime)
+      .sort((a, b) => ((b.performance as any)?.responseTime || 0) - ((a.performance as any)?.responseTime || 0))
       .slice(0, 5)
       .map(m => ({
         promptId: m.id,
-        responseTime: m.performance.responseTime,
-        model: m.model.name,
+        responseTime: (m.performance as any)?.responseTime || 0,
+        model: (m.model as any)?.name || 'unknown',
         timestamp: m.timestamp
       }));
   }
@@ -951,5 +951,116 @@ export class PerformanceMonitorService {
       peak: Math.max(...throughputs),
       minimum: Math.min(...throughputs)
     };
+  }
+
+  private async getOptimizationSuggestions(tenantId: string): Promise<OptimizationSuggestion[]> {
+    const lastHour = new Date(Date.now() - 60 * 60 * 1000);
+    
+    const recentMetrics = await this.prisma.performanceMetrics.findMany({
+      where: {
+        tenantId,
+        timestamp: { gte: lastHour }
+      },
+      orderBy: { timestamp: 'desc' },
+      take: 50
+    });
+
+    if (recentMetrics.length === 0) {
+      return [];
+    }
+
+    const suggestions: OptimizationSuggestion[] = [];
+
+    // Analyze recent metrics for optimization opportunities
+    const avgEfficiency = recentMetrics.reduce((sum, m) => sum + ((m.tokenEfficiency as any)?.efficiency || 0), 0) / recentMetrics.length;
+    const avgCost = recentMetrics.reduce((sum, m) => sum + ((m.cost as any)?.costPerRequest || 0), 0) / recentMetrics.length;
+    const avgQuality = recentMetrics.reduce((sum, m) => sum + ((m.responseQuality as any)?.overall || 0), 0) / recentMetrics.length;
+    const avgResponseTime = recentMetrics.reduce((sum, m) => sum + ((m.performance as any)?.responseTime || 0), 0) / recentMetrics.length;
+
+    // Token efficiency suggestions
+    if (avgEfficiency < 0.6) {
+      suggestions.push({
+        type: 'token_optimization',
+        title: 'Improve Token Efficiency',
+        description: `Current efficiency is ${(avgEfficiency * 100).toFixed(1)}%. Optimize prompts to reduce token waste.`,
+        impact: 'high',
+        effort: 'medium',
+        estimatedSavings: {
+          tokens: Math.round(recentMetrics.reduce((sum, m) => sum + ((m.tokenEfficiency as any)?.wastedTokens || 0), 0) * 0.5),
+          cost: avgCost * recentMetrics.length * 0.3
+        },
+        implementation: 'Use shorter, more direct language and remove unnecessary examples',
+        examples: [
+          'Replace "Please help me understand" with "Explain"',
+          'Use bullet points instead of paragraphs',
+          'Remove redundant examples'
+        ]
+      });
+    }
+
+    // Cost optimization suggestions
+    if (avgCost > 0.03) {
+      suggestions.push({
+        type: 'model_switch',
+        title: 'Switch to More Cost-Effective Model',
+        description: `Average cost per request is $${avgCost.toFixed(4)}. Consider using a smaller model.`,
+        impact: 'high',
+        effort: 'low',
+        estimatedSavings: {
+          cost: avgCost * recentMetrics.length * 0.4
+        },
+        implementation: 'Test with GPT-3.5-turbo or Claude Instant for similar results at lower cost',
+        examples: [
+          'Simple Q&A: Use GPT-3.5-turbo instead of GPT-4',
+          'Classification: Use fine-tuned smaller models'
+        ]
+      });
+    }
+
+    // Quality improvement suggestions
+    if (avgQuality < 0.8) {
+      suggestions.push({
+        type: 'prompt_improvement',
+        title: 'Enhance Prompt Quality',
+        description: `Response quality is ${(avgQuality * 100).toFixed(1)}%. Improve prompt structure and clarity.`,
+        impact: 'medium',
+        effort: 'medium',
+        estimatedSavings: {
+          time: 25
+        },
+        implementation: 'Add role definitions, context, and output format specifications',
+        examples: [
+          'Start with "You are an expert in..."',
+          'Provide 2-3 examples of expected output',
+          'Specify exact format requirements'
+        ]
+      });
+    }
+
+    // Performance suggestions
+    if (avgResponseTime > 3000) {
+      suggestions.push({
+        type: 'caching',
+        title: 'Implement Response Caching',
+        description: `Average response time is ${avgResponseTime.toFixed(0)}ms. Caching could help.`,
+        impact: 'medium',
+        effort: 'low',
+        estimatedSavings: {
+          time: 60,
+          cost: avgCost * recentMetrics.length * 0.2
+        },
+        implementation: 'Cache responses for repetitive or similar prompts',
+        examples: [
+          'FAQ responses',
+          'Template-based outputs',
+          'Common classification results'
+        ]
+      });
+    }
+
+    return suggestions.sort((a, b) => {
+      const impactScore = { high: 3, medium: 2, low: 1 };
+      return impactScore[b.impact] - impactScore[a.impact];
+    });
   }
 }

@@ -32,7 +32,7 @@ import { StorageModule } from './modules/storage/storage.module';
 import { WorkflowsModule } from './modules/workflows/workflows.module';
 import { CertificationModule } from './modules/certification/certification.module';
 import { PromptBuilderModule } from './modules/prompt-builder/prompt-builder.module';
-import { DnaAnalysisModule } from './modules/dna-analysis/dna-analysis.module';
+import { DNAAnalysisModule } from './modules/dna-analysis/dna-analysis.module';
 import { GitModule } from './modules/version-control/git.module';
 import { MarketplaceModule } from './modules/marketplace/marketplace.module';
 import { SecurityModule } from './modules/security/security.module';
@@ -74,8 +74,8 @@ import { HealthModule } from './health/health.module';
       inject: [ConfigService],
     }),
 
-    // Background jobs
-    BullModule.forRootAsync({
+    // Background jobs (conditional based on Redis availability)
+    ...(process.env.REDIS_HOST ? [BullModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
         redis: {
@@ -85,7 +85,7 @@ import { HealthModule } from './health/health.module';
         },
       }),
       inject: [ConfigService],
-    }),
+    })] : []),
 
     // Event system
     EventEmitterModule.forRoot({
@@ -122,7 +122,7 @@ import { HealthModule } from './health/health.module';
     WorkflowsModule,
     CertificationModule,
     PromptBuilderModule,
-    DnaAnalysisModule,
+    DNAAnalysisModule,
     GitModule,
     MarketplaceModule,
     SecurityModule,

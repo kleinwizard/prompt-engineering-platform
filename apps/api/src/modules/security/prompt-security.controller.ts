@@ -1,5 +1,5 @@
 import { Controller, Post, Get, Body, Query, UseGuards, Request, Param } from '@nestjs/common';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PromptSecurityService } from './prompt-security.service';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';

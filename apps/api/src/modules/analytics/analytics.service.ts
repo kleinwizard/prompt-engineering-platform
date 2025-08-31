@@ -10,13 +10,6 @@ import {
   SkillAnalytics,
   LearningAnalytics,
   CommunityAnalytics,
-  RevenueAnalytics,
-  UsageAnalytics,
-  PerformanceMetrics,
-  RetentionAnalytics,
-  ComparisonMetrics,
-  TrendAnalysis,
-  UserSegment,
   AnalyticsFilter,
 } from './interfaces';
 
@@ -587,6 +580,10 @@ export class AnalyticsService {
       },
     });
 
+    if (!user) {
+      throw new Error(`User ${userId} not found`);
+    }
+
     const globalRank = await this.prisma.userProfile.count({
       where: {
         totalPoints: { gt: user.profile?.totalPoints || 0 },
@@ -630,7 +627,7 @@ export class AnalyticsService {
 
     const shared = prompts.filter(p => p.isPublic).length;
     const avgImprovement = improvements.reduce((sum, imp) => {
-      return sum + (imp.properties?.improvement_score || 0);
+      return sum + ((imp.properties as any)?.improvement_score || 0);
     }, 0) / (improvements.length || 1);
 
     return {
@@ -793,7 +790,7 @@ export class AnalyticsService {
       const hour = session.timestamp.getHours();
       peakHours[hour]++;
 
-      const duration = session.properties?.duration || 0;
+      const duration = (session.properties as any)?.duration || 0;
       totalTimeSpent += duration;
     });
 
@@ -972,7 +969,7 @@ export class AnalyticsService {
     });
 
     return events.reduce((sum, event) => {
-      return sum + (event.properties?.points || 0);
+      return sum + ((event.properties as any)?.points || 0);
     }, 0);
   }
 
@@ -1083,40 +1080,220 @@ export class AnalyticsService {
     this.logger.log('Cleaned up old analytics events');
   }
 
-  // Placeholder methods for missing implementations
+  // Platform content analytics implementation
   private async getPlatformContentMetrics(startDate: Date, endDate: Date, filters?: AnalyticsFilter): Promise<any> {
-    // Implementation would gather content metrics
-    return {};
+    const dateFilter = {
+      createdAt: {
+        gte: startDate,
+        lte: endDate,
+      },
+    };
+
+    const [promptCount, templateCount, userCount] = await Promise.all([
+      this.prisma.prompt.count({ where: dateFilter }),
+      this.prisma.template.count({ where: dateFilter }),
+      this.prisma.user.count({ where: dateFilter }),
+    ]);
+
+    return {
+      prompts: promptCount,
+      templates: templateCount, 
+      users: userCount,
+      period: {
+        start: startDate,
+        end: endDate,
+      },
+    };
   }
 
   private async getPlatformEngagementMetrics(startDate: Date, endDate: Date, filters?: AnalyticsFilter): Promise<any> {
-    // Implementation would gather engagement metrics
-    return {};
+    const dateFilter = {
+      createdAt: {
+        gte: startDate,
+        lte: endDate,
+      },
+    };
+
+    // Get analytics events for engagement metrics
+    const engagementEvents = await this.prisma.analyticsEvent.findMany({
+      where: {
+        createdAt: dateFilter.createdAt,
+        event: {
+          in: ['prompt.executed', 'template.used', 'user.login', 'prompt.shared']
+        },
+      },
+      select: {
+        event: true,
+        userId: true,
+        createdAt: true,
+      },
+    });
+
+    const uniqueUsers = new Set(engagementEvents.map(e => e.userId)).size;
+    const eventCounts = engagementEvents.reduce((acc, event) => {
+      acc[event.event] = (acc[event.event] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return {
+      activeUsers: uniqueUsers,
+      promptExecutions: eventCounts['prompt.executed'] || 0,
+      templateUsage: eventCounts['template.used'] || 0,
+      userLogins: eventCounts['user.login'] || 0,
+      promptShares: eventCounts['prompt.shared'] || 0,
+      totalEngagementEvents: engagementEvents.length,
+      period: {
+        start: startDate,
+        end: endDate,
+      },
+    };
   }
 
   private async getPlatformLearningMetrics(startDate: Date, endDate: Date, filters?: AnalyticsFilter): Promise<any> {
-    // Implementation would gather learning metrics
-    return {};
+    // Get learning-related analytics events
+    const learningEvents = await this.prisma.analyticsEvent.findMany({
+      where: {
+        createdAt: {
+          gte: startDate,
+          lte: endDate,
+        },
+        event: {
+          startsWith: 'learning.',
+        },
+      },
+      select: {
+        event: true,
+        userId: true,
+        properties: true,
+      },
+    });
+
+    const learningStats = learningEvents.reduce((acc, event) => {
+      const eventType = event.event.split('.')[1]; // Extract action after 'learning.'
+      acc[eventType] = (acc[eventType] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return {
+      enrollments: learningStats['enrolled'] || 0,
+      completions: learningStats['completed'] || 0,
+      assessments: learningStats['assessed'] || 0,
+      totalLearningEvents: learningEvents.length,
+      uniqueLearners: new Set(learningEvents.map(e => e.userId)).size,
+      period: {
+        start: startDate,
+        end: endDate,
+      },
+    };
   }
 
   private async getPlatformRevenueMetrics(startDate: Date, endDate: Date, filters?: AnalyticsFilter): Promise<any> {
-    // Implementation would gather revenue metrics
-    return {};
+    // Get subscription analytics for revenue tracking
+    const subscriptionEvents = await this.prisma.analyticsEvent.findMany({
+      where: {
+        createdAt: {
+          gte: startDate,
+          lte: endDate,
+        },
+        event: {
+          in: ['subscription.created', 'subscription.upgraded', 'subscription.cancelled', 'payment.completed']
+        },
+      },
+      select: {
+        event: true,
+        properties: true,
+        userId: true,
+      },
+    });
+
+    let totalRevenue = 0;
+    const revenueStats = subscriptionEvents.reduce((acc, event) => {
+      const eventType = event.event.split('.')[1];
+      acc[eventType] = (acc[eventType] || 0) + 1;
+      
+      // Extract revenue from payment events
+      if (event.event === 'payment.completed' && event.properties) {
+        const amount = (event.properties as any)?.amount || 0;
+        totalRevenue += amount;
+      }
+      
+      return acc;
+    }, {} as Record<string, number>);
+
+    return {
+      totalRevenue,
+      subscriptionsCreated: revenueStats['created'] || 0,
+      subscriptionsUpgraded: revenueStats['upgraded'] || 0,
+      subscriptionsCancelled: revenueStats['cancelled'] || 0,
+      paymentsCompleted: revenueStats['completed'] || 0,
+      period: {
+        start: startDate,
+        end: endDate,
+      },
+    };
   }
 
   private async getPlatformPerformanceMetrics(startDate: Date, endDate: Date, filters?: AnalyticsFilter): Promise<any> {
-    // Implementation would gather performance metrics
-    return {};
+    // Get performance-related analytics events
+    const performanceEvents = await this.prisma.analyticsEvent.findMany({
+      where: {
+        createdAt: {
+          gte: startDate,
+          lte: endDate,
+        },
+        event: {
+          in: ['api.request', 'api.error', 'llm.request', 'llm.timeout']
+        },
+      },
+      select: {
+        event: true,
+        properties: true,
+      },
+    });
+
+    let totalRequests = 0;
+    let totalErrors = 0;
+    let totalResponseTime = 0;
+    let responseTimeCount = 0;
+
+    performanceEvents.forEach(event => {
+      if (event.event === 'api.request') {
+        totalRequests++;
+        const responseTime = (event.properties as any)?.responseTime;
+        if (responseTime) {
+          totalResponseTime += responseTime;
+          responseTimeCount++;
+        }
+      } else if (event.event === 'api.error') {
+        totalErrors++;
+      }
+    });
+
+    const avgResponseTime = responseTimeCount > 0 ? totalResponseTime / responseTimeCount : 0;
+    const errorRate = totalRequests > 0 ? (totalErrors / totalRequests) * 100 : 0;
+
+    return {
+      totalRequests,
+      totalErrors,
+      errorRate,
+      averageResponseTime: avgResponseTime,
+      period: {
+        start: startDate,
+        end: endDate,
+      },
+    };
   }
 
   private async getRetentionAnalytics(startDate: Date, endDate: Date): Promise<any> {
-    // Implementation would calculate retention metrics
-    return {};
+    // TODO: Implement retention analytics for date range
+    const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 3600 * 24));
+    return { placeholder: true, daysRange: daysDiff };
   }
 
   private async getCohortAnalysis(startDate: Date, endDate: Date): Promise<any> {
-    // Implementation would perform cohort analysis
-    return {};
+    // TODO: Implement cohort analysis
+    const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 3600 * 24));
+    return { placeholder: true, daysRange: daysDiff };
   }
 
   private async getPlatformTrends(timeframe: string): Promise<any> {
@@ -1125,13 +1302,34 @@ export class AnalyticsService {
   }
 
   // Additional placeholder methods for completeness
-  private async getSessionMetrics(startDate: Date, endDate: Date): Promise<any> { return {}; }
-  private async getInteractionMetrics(startDate: Date, endDate: Date): Promise<any> { return {}; }
-  private async getContentInteractionMetrics(startDate: Date, endDate: Date): Promise<any> { return {}; }
-  private async getSocialEngagementMetrics(startDate: Date, endDate: Date): Promise<any> { return {}; }
-  private async getFeatureUsageMetrics(startDate: Date, endDate: Date): Promise<any> { return {}; }
-  private async generateHeatmapData(startDate: Date, endDate: Date): Promise<any> { return {}; }
-  private async getFunnelAnalytics(startDate: Date, endDate: Date): Promise<any> { return {}; }
+  private async getSessionMetrics(startDate: Date, endDate: Date): Promise<any> { 
+    const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 3600 * 24));
+    return { placeholder: true, daysRange: daysDiff }; 
+  }
+  private async getInteractionMetrics(startDate: Date, endDate: Date): Promise<any> { 
+    const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 3600 * 24));
+    return { placeholder: true, daysRange: daysDiff }; 
+  }
+  private async getContentInteractionMetrics(startDate: Date, endDate: Date): Promise<any> { 
+    const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 3600 * 24));
+    return { placeholder: true, daysRange: daysDiff }; 
+  }
+  private async getSocialEngagementMetrics(startDate: Date, endDate: Date): Promise<any> { 
+    const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 3600 * 24));
+    return { placeholder: true, daysRange: daysDiff }; 
+  }
+  private async getFeatureUsageMetrics(startDate: Date, endDate: Date): Promise<any> { 
+    const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 3600 * 24));
+    return { placeholder: true, daysRange: daysDiff }; 
+  }
+  private async generateHeatmapData(startDate: Date, endDate: Date): Promise<any> { 
+    const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 3600 * 24));
+    return { placeholder: true, daysRange: daysDiff }; 
+  }
+  private async getFunnelAnalytics(startDate: Date, endDate: Date): Promise<any> { 
+    const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 3600 * 24));
+    return { placeholder: true, daysRange: daysDiff }; 
+  }
   private async getCurrentActiveUsers(): Promise<number> { return 0; }
   private async getRecentActivity(startDate: Date): Promise<any> { return {}; }
   private async getSystemHealthMetrics(): Promise<any> { return {}; }
@@ -1143,4 +1341,656 @@ export class AnalyticsService {
   private async aggregateUserMetrics(startDate: Date, endDate: Date): Promise<void> {}
   private async aggregateLearningMetrics(startDate: Date, endDate: Date): Promise<void> {}
   private async aggregateCommunityMetrics(startDate: Date, endDate: Date): Promise<void> {}
+
+  // Missing method stubs for compilation
+  private async getTopPerformingContent(contentType?: string, startDate?: Date, endDate?: Date): Promise<any> { 
+    return { total: 0, items: [] }; 
+  }
+  
+  private async getContentCategoryAnalysis(contentType?: string, startDate?: Date, endDate?: Date): Promise<any> { 
+    return {}; 
+  }
+  
+  private async getContentCreatorAnalysis(contentType?: string, startDate?: Date, endDate?: Date): Promise<any> { 
+    return {}; 
+  }
+  
+  private async getContentEngagementAnalysis(contentType?: string, startDate?: Date, endDate?: Date): Promise<any> { 
+    return { totalViews: 0, totalLikes: 0, totalShares: 0 }; 
+  }
+  
+  private async getContentQualityMetrics(contentType?: string, startDate?: Date, endDate?: Date): Promise<any> { 
+    return { avgRating: 0 }; 
+  }
+  
+  private async getContentTrends(contentType?: string, timeframe?: string): Promise<any> { 
+    return {}; 
+  }
+  
+  private async getOverallSkillProgress(startDate?: Date, endDate?: Date): Promise<any> { 
+    return {}; 
+  }
+  
+  private async getSkillDistribution(startDate?: Date, endDate?: Date): Promise<any> { 
+    return {}; 
+  }
+  
+  private async getSkillAssessmentData(startDate?: Date, endDate?: Date): Promise<any> { 
+    return {}; 
+  }
+  
+  private async getSkillImprovementTrends(startDate?: Date, endDate?: Date): Promise<any> { 
+    return {}; 
+  }
+  
+  private async getCompetencyLevels(startDate?: Date, endDate?: Date): Promise<any> { 
+    return {}; 
+  }
+
+  private async getSkillRecommendations(startDate?: Date, endDate?: Date): Promise<any> { 
+    return []; 
+  }
+
+  private async getLearningPathMetrics(startDate?: Date, endDate?: Date): Promise<any> { 
+    return { enrollments: 0 }; 
+  }
+
+  private async getLessonMetrics(startDate?: Date, endDate?: Date): Promise<any> { 
+    return { avgTime: 0 }; 
+  }
+
+  private async getCompletionRates(startDate?: Date, endDate?: Date): Promise<any> { 
+    return { overall: 0 }; 
+  }
+
+  private async getLearningEngagementPatterns(startDate?: Date, endDate?: Date): Promise<any> { 
+    return {}; 
+  }
+
+  private async getLearningEffectivenessMetrics(startDate?: Date, endDate?: Date): Promise<any> { 
+    return { satisfaction: 0 }; 
+  }
+
+  private async getSpacedRepetitionMetrics(startDate?: Date, endDate?: Date): Promise<any> { 
+    return {}; 
+  }
+
+  private async getCommunityMembershipMetrics(startDate?: Date, endDate?: Date): Promise<any> { 
+    return {}; 
+  }
+
+  private async getCommunityActivityMetrics(startDate?: Date, endDate?: Date): Promise<any> { 
+    return {}; 
+  }
+
+  private async getCommunityContentMetrics(startDate?: Date, endDate?: Date): Promise<any> { 
+    return {}; 
+  }
+
+  private async getCommunityInteractionMetrics(startDate?: Date, endDate?: Date): Promise<any> { 
+    return {}; 
+  }
+
+  private async getCommunityModerationMetrics(startDate?: Date, endDate?: Date): Promise<any> { 
+    return {}; 
+  }
+
+  private async getInfluencerMetrics(startDate?: Date, endDate?: Date): Promise<any> {
+    const influencers = await this.prisma.user.findMany({
+      where: {
+        profile: {
+          totalPoints: { gte: 1000 },
+        },
+      },
+      include: {
+        profile: true,
+        _count: {
+          select: {
+            followers: true,
+            prompts: true,
+            templates: true,
+          },
+        },
+      },
+      orderBy: {
+        profile: {
+          totalPoints: 'desc',
+        },
+      },
+      take: 20,
+    });
+
+    return influencers.map(user => ({
+      userId: user.id,
+      username: user.username,
+      totalPoints: user.profile?.totalPoints || 0,
+      followers: user._count.followers,
+      promptsCreated: user._count.prompts,
+      templatesCreated: user._count.templates,
+      influence: this.calculateInfluenceScore(user),
+    }));
+  }
+
+  private async getCommunityHealthScore(startDate?: Date, endDate?: Date): Promise<number> {
+    const [
+      activeMembers,
+      totalMembers,
+      recentPosts,
+      recentComments,
+      moderationActions,
+    ] = await Promise.all([
+      this.prisma.user.count({
+        where: {
+          lastActive: { gte: startDate || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+        },
+      }),
+      this.prisma.user.count(),
+      this.prisma.prompt.count({
+        where: {
+          createdAt: { gte: startDate || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+          isPublic: true,
+        },
+      }),
+      this.prisma.comment.count({
+        where: {
+          createdAt: { gte: startDate || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+        },
+      }),
+      this.prisma.analyticsEvent.count({
+        where: {
+          event: { startsWith: 'moderation.' },
+          timestamp: { gte: startDate || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+        },
+      }),
+    ]);
+
+    const activityRatio = totalMembers > 0 ? activeMembers / totalMembers : 0;
+    const contentHealthScore = (recentPosts + recentComments) / Math.max(activeMembers, 1);
+    const moderationScore = Math.max(0, 1 - (moderationActions / Math.max(recentPosts + recentComments, 1)));
+
+    return Math.round(((activityRatio * 0.4) + (contentHealthScore * 0.3) + (moderationScore * 0.3)) * 100);
+  }
+
+  private async generateUserActivityReport(timeframe: string, filters?: any): Promise<any> {
+    const { startDate, endDate } = this.parseTimeframe(timeframe);
+    
+    const userActivities = await this.prisma.analyticsEvent.groupBy({
+      by: ['userId'],
+      where: {
+        timestamp: { gte: startDate, lte: endDate },
+        ...(filters?.userIds && { userId: { in: filters.userIds } }),
+      },
+      _count: {
+        event: true,
+      },
+      orderBy: {
+        _count: {
+          event: 'desc',
+        },
+      },
+      take: 100,
+    });
+
+    const reportData = await Promise.all(
+      userActivities.map(async (activity) => {
+        const user = await this.prisma.user.findUnique({
+          where: { id: activity.userId },
+          select: { username: true, email: true },
+        });
+
+        const sessionEvents = await this.prisma.analyticsEvent.findMany({
+          where: {
+            userId: activity.userId,
+            event: 'session.start',
+            timestamp: { gte: startDate, lte: endDate },
+          },
+        });
+
+        return {
+          userId: activity.userId,
+          username: user?.username || 'Unknown',
+          totalEvents: activity._count.event,
+          sessions: sessionEvents.length,
+          avgSessionDuration: sessionEvents.reduce((sum, s) => sum + ((s.properties as any)?.duration || 0), 0) / sessionEvents.length || 0,
+        };
+      })
+    );
+
+    return {
+      timeframe,
+      period: { startDate, endDate },
+      totalUsers: reportData.length,
+      mostActiveUsers: reportData.slice(0, 10),
+      summary: {
+        totalEvents: reportData.reduce((sum, u) => sum + u.totalEvents, 0),
+        avgEventsPerUser: reportData.reduce((sum, u) => sum + u.totalEvents, 0) / reportData.length || 0,
+        totalSessions: reportData.reduce((sum, u) => sum + u.sessions, 0),
+      },
+    };
+  }
+
+  private async generateContentPerformanceReport(timeframe: string, filters?: any): Promise<any> {
+    const { startDate, endDate } = this.parseTimeframe(timeframe);
+    
+    const [prompts, templates] = await Promise.all([
+      this.prisma.prompt.findMany({
+        where: {
+          createdAt: { gte: startDate, lte: endDate },
+          ...(filters?.category && { category: filters.category }),
+          ...(filters?.isPublic !== undefined && { isPublic: filters.isPublic }),
+        },
+        include: {
+          _count: {
+            select: {
+              likes: true,
+              comments: true,
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+      }),
+      this.prisma.template.findMany({
+        where: {
+          createdAt: { gte: startDate, lte: endDate },
+          ...(filters?.category && { category: filters.category }),
+          ...(filters?.isPublic !== undefined && { isPublic: filters.isPublic }),
+        },
+        include: {
+          _count: {
+            select: {
+              likes: true,
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+      }),
+    ]);
+
+    return {
+      timeframe,
+      period: { startDate, endDate },
+      prompts: {
+        total: prompts.length,
+        topPerforming: prompts.slice(0, 10).map(p => ({
+          id: p.id,
+          title: p.title,
+          likes: p._count?.likes || 0,
+          comments: p._count?.comments || 0,
+          category: p.category,
+          views: p.views || 0,
+        })),
+        avgLikes: prompts.reduce((sum, p) => sum + p._count.likes, 0) / prompts.length || 0,
+      },
+      templates: {
+        total: templates.length,
+        topPerforming: templates.slice(0, 10).map(t => ({
+          id: t.id,
+          name: t.title,
+          uses: t.usageCount || 0,
+          likes: t._count?.likes || 0,
+          rating: t.rating,
+          category: t.category,
+        })),
+        avgUses: templates.reduce((sum, t) => sum + (t.usageCount || 0), 0) / templates.length || 0,
+        avgRating: templates.reduce((sum, t) => sum + t.rating, 0) / templates.length || 0,
+      },
+    };
+  }
+
+  private async generateCommunityHealthReport(timeframe: string, filters?: any): Promise<any> {
+    const { startDate, endDate } = this.parseTimeframe(timeframe);
+    
+    const [
+      activeUsers,
+      newMembers,
+      posts,
+      comments,
+      moderationActions,
+      reports,
+    ] = await Promise.all([
+      this.prisma.user.count({
+        where: {
+          lastActive: { gte: startDate },
+        },
+      }),
+      this.prisma.user.count({
+        where: {
+          createdAt: { gte: startDate, lte: endDate },
+        },
+      }),
+      this.prisma.prompt.count({
+        where: {
+          createdAt: { gte: startDate, lte: endDate },
+          isPublic: true,
+        },
+      }),
+      this.prisma.comment.count({
+        where: {
+          createdAt: { gte: startDate, lte: endDate },
+        },
+      }),
+      this.prisma.analyticsEvent.count({
+        where: {
+          event: { startsWith: 'moderation.' },
+          timestamp: { gte: startDate, lte: endDate },
+        },
+      }),
+      this.prisma.analyticsEvent.count({
+        where: {
+          event: 'content.reported',
+          timestamp: { gte: startDate, lte: endDate },
+        },
+      }),
+    ]);
+
+    const healthScore = await this.getCommunityHealthScore(startDate, endDate);
+    
+    return {
+      timeframe,
+      period: { startDate, endDate },
+      overview: {
+        healthScore,
+        activeUsers,
+        newMembers,
+        totalPosts: posts,
+        totalComments: comments,
+      },
+      engagement: {
+        postsPerActiveUser: activeUsers > 0 ? posts / activeUsers : 0,
+        commentsPerPost: posts > 0 ? comments / posts : 0,
+        memberRetention: await this.calculateMemberRetention(startDate, endDate),
+      },
+      moderation: {
+        totalActions: moderationActions,
+        reportsReceived: reports,
+        moderationRate: (posts + comments) > 0 ? moderationActions / (posts + comments) : 0,
+      },
+      recommendations: this.generateCommunityRecommendations(healthScore, { posts, comments, moderationActions }),
+    };
+  }
+
+  private async generatePlatformOverviewReport(timeframe: string, filters?: any): Promise<any> {
+    const { startDate, endDate } = this.parseTimeframe(timeframe);
+    
+    const [
+      userMetrics,
+      contentMetrics,
+      engagementMetrics,
+      revenueMetrics,
+      systemMetrics,
+    ] = await Promise.all([
+      this.getPlatformUserMetrics(startDate, endDate, filters),
+      this.getPlatformContentMetrics(startDate, endDate, filters),
+      this.getPlatformEngagementMetrics(startDate, endDate, filters),
+      this.getPlatformRevenueMetrics(startDate, endDate, filters),
+      this.getPlatformPerformanceMetrics(startDate, endDate, filters),
+    ]);
+
+    return {
+      timeframe,
+      period: { startDate, endDate },
+      executiveSummary: {
+        totalUsers: userMetrics.total,
+        activeUsers: userMetrics.active,
+        userGrowth: userMetrics.growth,
+        contentCreated: contentMetrics.total,
+        platformEngagement: engagementMetrics.total,
+        // ISSUE: Hardcoded fallback uptime of 99.9% when metrics unavailable
+        // FIX: Use actual system monitoring data or throw error if unavailable
+        systemPerformance: systemMetrics.uptime || 99.9,
+      },
+      keyMetrics: {
+        users: userMetrics,
+        content: contentMetrics,
+        engagement: engagementMetrics,
+        revenue: revenueMetrics,
+        performance: systemMetrics,
+      },
+      trends: await this.getPlatformTrends(timeframe),
+      insights: this.generatePlatformInsights(userMetrics, contentMetrics, engagementMetrics),
+      recommendations: this.generatePlatformRecommendations(userMetrics, contentMetrics, engagementMetrics),
+    };
+  }
+
+  private calculateInfluenceScore(user: any): number {
+    // ISSUE: Hardcoded influence scoring weights and thresholds
+    // ISSUE: Magic numbers: followers/100, content/50, points/10000
+    // FIX: Move scoring algorithm to configuration or separate scoring service
+    const followersWeight = 0.3;
+    const contentWeight = 0.4;
+    const pointsWeight = 0.3;
+
+    const followersScore = Math.min(user._count.followers / 100, 1) * 100;
+    const contentScore = Math.min((user._count.prompts + user._count.templates) / 50, 1) * 100;
+    // ISSUE: Hardcoded points threshold of 10000
+    // FIX: Make configurable or calculate dynamically from user distribution
+    const pointsScore = Math.min((user.profile?.totalPoints || 0) / 10000, 1) * 100;
+
+    return Math.round(
+      (followersScore * followersWeight) +
+      (contentScore * contentWeight) +
+      (pointsScore * pointsWeight)
+    );
+  }
+
+  private async calculateMemberRetention(startDate: Date, endDate: Date): Promise<number> {
+    const duration = endDate.getTime() - startDate.getTime();
+    const prevStartDate = new Date(startDate.getTime() - duration);
+    
+    const [newMembersCurrentPeriod, activeMembersCurrentPeriod] = await Promise.all([
+      this.prisma.user.findMany({
+        where: {
+          createdAt: { gte: prevStartDate, lt: startDate },
+        },
+        select: { id: true },
+      }),
+      this.prisma.user.findMany({
+        where: {
+          createdAt: { gte: prevStartDate, lt: startDate },
+          lastActive: { gte: startDate },
+        },
+        select: { id: true },
+      }),
+    ]);
+
+    return newMembersCurrentPeriod.length > 0 
+      ? (activeMembersCurrentPeriod.length / newMembersCurrentPeriod.length) * 100 
+      : 0;
+  }
+
+  private generateCommunityRecommendations(healthScore: number, metrics: any): string[] {
+    const recommendations = [];
+    
+    if (healthScore < 60) {
+      recommendations.push('Consider implementing community engagement initiatives');
+      recommendations.push('Review moderation policies and community guidelines');
+    }
+    
+    if (metrics.moderationActions > metrics.posts * 0.1) {
+      recommendations.push('High moderation activity detected - review community guidelines');
+    }
+    
+    if (metrics.comments / metrics.posts < 0.5) {
+      recommendations.push('Low comment engagement - consider discussion prompts');
+    }
+
+    return recommendations;
+  }
+
+  private generatePlatformInsights(userMetrics: any, contentMetrics: any, engagementMetrics: any): string[] {
+    const insights = [];
+    
+    if (userMetrics.growth > 20) {
+      insights.push('Strong user growth indicates successful acquisition strategies');
+    }
+    
+    if (contentMetrics.growth > userMetrics.growth) {
+      insights.push('Content creation outpacing user growth - good content engagement');
+    }
+    
+    if (engagementMetrics.total / userMetrics.active > 10) {
+      insights.push('High engagement per active user indicates strong platform value');
+    }
+
+    return insights;
+  }
+
+  private generatePlatformRecommendations(userMetrics: any, contentMetrics: any, engagementMetrics: any): string[] {
+    const recommendations = [];
+    
+    if (userMetrics.growth < 5) {
+      recommendations.push('Focus on user acquisition strategies');
+    }
+    
+    if (contentMetrics.total / userMetrics.active < 2) {
+      recommendations.push('Encourage more content creation through incentives');
+    }
+    
+    if (engagementMetrics.total / userMetrics.active < 5) {
+      recommendations.push('Improve user engagement through feature enhancements');
+    }
+
+    return recommendations;
+  }
+
+  private async generateLearningEffectivenessReport(timeframe: string, filters?: any): Promise<any> {
+    const { startDate, endDate } = this.parseTimeframe(timeframe);
+    
+    const [
+      learningPaths,
+      completionRates,
+      userProgress,
+      assessmentScores,
+    ] = await Promise.all([
+      this.prisma.learningPath.findMany({
+        where: {
+          createdAt: { gte: startDate, lte: endDate },
+        },
+        include: {
+          _count: {
+            select: {
+              enrollments: true,
+              completions: true,
+            },
+          },
+        },
+      }),
+      this.prisma.userLearningPath.groupBy({
+        by: ['status'],
+        where: {
+          enrolledAt: { gte: startDate, lte: endDate },
+        },
+        _count: {
+          id: true,
+        },
+      }),
+      this.prisma.lessonProgress.findMany({
+        where: {
+          completedAt: { gte: startDate, lte: endDate },
+          status: 'completed',
+        },
+        select: {
+          score: true,
+          timeSpent: true,
+          lesson: {
+            select: {
+              title: true,
+              type: true,
+            },
+          },
+        },
+      }),
+      this.prisma.skillAssessment.findMany({
+        where: {
+          createdAt: { gte: startDate, lte: endDate },
+        },
+        select: {
+          score: true,
+          passed: true,
+          skill: {
+            select: {
+              name: true,
+              category: true,
+            },
+          },
+        },
+      }),
+    ]);
+
+    const totalEnrollments = completionRates.reduce((sum, cr) => sum + cr._count.id, 0);
+    const completedCount = completionRates.find(cr => cr.status === 'completed')?._count.id || 0;
+    const overallCompletionRate = totalEnrollments > 0 ? (completedCount / totalEnrollments) * 100 : 0;
+
+    const avgLessonScore = userProgress.length > 0 
+      ? userProgress.reduce((sum, up) => sum + (up.score || 0), 0) / userProgress.length 
+      : 0;
+
+    const avgAssessmentScore = assessmentScores.length > 0
+      ? assessmentScores.reduce((sum, as) => sum + as.score, 0) / assessmentScores.length
+      : 0;
+
+    const assessmentPassRate = assessmentScores.length > 0
+      ? (assessmentScores.filter(as => as.passed).length / assessmentScores.length) * 100
+      : 0;
+
+    return {
+      timeframe,
+      period: { startDate, endDate },
+      overview: {
+        totalEnrollments,
+        completionRate: overallCompletionRate,
+        avgLessonScore,
+        avgAssessmentScore,
+        assessmentPassRate,
+      },
+      learningPaths: {
+        total: learningPaths.length,
+        mostPopular: learningPaths
+          .sort((a, b) => (b._count?.enrollments || 0) - (a._count?.enrollments || 0))
+          .slice(0, 5)
+          .map(lp => ({
+            id: lp.id,
+            title: lp.title,
+            enrollments: lp._count?.enrollments || 0,
+            completions: lp._count?.completions || 0,
+            completionRate: (lp._count?.enrollments || 0) > 0 
+              ? ((lp._count?.completions || 0) / (lp._count?.enrollments || 0)) * 100 
+              : 0,
+          })),
+      },
+      effectiveness: {
+        completionRates: completionRates.map(cr => ({
+          status: cr.status,
+          count: cr._count.id,
+          percentage: totalEnrollments > 0 ? (cr._count.id / totalEnrollments) * 100 : 0,
+        })),
+        learningProgress: {
+          avgLessonScore,
+          avgAssessmentScore,
+          passRate: assessmentPassRate,
+        },
+      },
+      recommendations: this.generateLearningRecommendations(overallCompletionRate, avgLessonScore, assessmentPassRate),
+    };
+  }
+
+  private generateLearningRecommendations(completionRate: number, avgScore: number, passRate: number): string[] {
+    const recommendations = [];
+    
+    if (completionRate < 50) {
+      recommendations.push('Low completion rate - consider reviewing course difficulty and pacing');
+    }
+    
+    if (avgScore < 70) {
+      recommendations.push('Average scores are low - provide additional support materials');
+    }
+    
+    if (passRate < 80) {
+      recommendations.push('Assessment pass rate is low - review assessment difficulty');
+    }
+
+    return recommendations;
+  }
 }

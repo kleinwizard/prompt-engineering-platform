@@ -367,6 +367,7 @@ export class ChallengesService {
     }
 
     await this.prisma.$transaction(async (tx) => {
+      // Create challenge participant
       // Add participant
       await tx.challengeParticipant.create({
         data: {
@@ -390,6 +391,7 @@ export class ChallengesService {
       challengeTitle: challenge.title,
     });
 
+    // Track challenge participation
     // Check for first challenge achievement
     const userChallengeCount = await this.prisma.challengeParticipant.count({
       where: { userId },
@@ -436,6 +438,7 @@ export class ChallengesService {
       throw new BadRequestException('Challenge submission period has ended');
     }
 
+    // Create challenge submission
     // Check if already submitted
     const existingSubmission = await this.prisma.challengeSubmission.findUnique({
       where: {
@@ -452,6 +455,7 @@ export class ChallengesService {
 
     // Create submission
     const submission = await this.prisma.$transaction(async (tx) => {
+      // Create submission record
       const newSubmission = await tx.challengeSubmission.create({
         data: {
           userId,
@@ -521,7 +525,7 @@ export class ChallengesService {
       rank,
       feedback: scoringResult.feedback,
       pointsAwarded,
-      achievements: [], // TODO: Add achievement checking
+      achievements: await this.checkChallengeAchievements(userId, challengeId, scoringResult.totalScore),
     };
   }
 
@@ -662,11 +666,13 @@ export class ChallengesService {
   }
 
   async getChallengeRecommendations(userId: string): Promise<ChallengeRecommendation[]> {
+    // Get user skills for recommendations
     // Get user's skill level and interests
     const userSkills = await this.prisma.userSkills.findUnique({
       where: { userId },
     });
 
+    // Get user challenge history
     const userChallenges = await this.prisma.challengeParticipant.findMany({
       where: { userId },
       include: { challenge: true },
@@ -1180,5 +1186,30 @@ export class ChallengesService {
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '');
+  }
+
+  private async checkChallengeAchievements(userId: string, challengeId: string, score: number): Promise<string[]> {
+    const achievements: string[] = [];
+
+    // Get user's challenge submission count
+    const submissionCount = await this.prisma.challengeSubmission.count({
+      where: { userId }
+    });
+
+    // Check for various achievement criteria
+    if (score >= 90) {
+      achievements.push('high-scorer');
+    }
+    if (score === 100) {
+      achievements.push('perfectionist');
+    }
+    if (submissionCount === 1) {
+      achievements.push('first-submission');
+    }
+    if (submissionCount >= 10) {
+      achievements.push('challenge-enthusiast');
+    }
+
+    return achievements;
   }
 }

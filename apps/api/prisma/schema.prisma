@@ -28,6 +28,9 @@ model User {
   lastActive    DateTime  @default(now())
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+  
+  // Authentication context for password reset, email verification, etc.
+  additionalContext Json?
 
   // User preferences
   preferences UserPreferences?
@@ -117,6 +120,11 @@ model User {
 
   // Revenue
   revenueTransactions RevenueTransaction[]
+
+  // Additional relations for new models
+  pushSubscriptions PushSubscription[]
+  refreshTokens     RefreshToken[]
+  securityEvents    SecurityEvent[]
 
   @@index([email])
   @@index([username])
@@ -1631,4 +1639,63 @@ model RevenueTransaction {
   createdAt DateTime @default(now())
 
   @@map("revenue_transactions")
+}
+
+// Additional missing models based on bugfix comments
+model EmailLog {
+  id         String   @id @default(cuid())
+  to         String
+  subject    String
+  status     String   @default("pending") // pending, sent, failed
+  provider   String   // smtp, sendgrid, ses
+  error      String?
+  metadata   Json?
+  sentAt     DateTime?
+  createdAt  DateTime @default(now())
+
+  @@map("email_logs")
+}
+
+model PushSubscription {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint   String
+  auth       String
+  p256dh     String
+  userAgent  String?
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, endpoint])
+  @@map("push_subscriptions")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@map("refresh_tokens")
+}
+
+model SecurityEvent {
+  id          String   @id @default(cuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  type        String   // login_attempt, permission_denied, data_access, etc.
+  severity    String   // low, medium, high, critical
+  description String
+  metadata    Json?
+  ipAddress   String?
+  userAgent   String?
+  timestamp   DateTime @default(now())
+
+  @@index([type, timestamp])
+  @@index([severity, timestamp])
+  @@map("security_events")
 }

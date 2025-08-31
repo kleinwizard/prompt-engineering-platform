@@ -38,7 +38,7 @@ interface QualityCheck {
   recommendations: string[];
 }
 
-interface MarketplaceStats {
+export interface MarketplaceStats {
   totalListings: number;
   activeListings: number;
   totalSales: number;
@@ -71,6 +71,8 @@ export class MarketplaceService {
     }
 
     // Create the listing
+    // ISSUE: Model 'marketplaceListing' does not exist in Prisma schema
+    // FIX: Create MarketplaceListing model with all required marketplace fields
     const listing = await this.prisma.marketplaceListing.create({
       data: {
         sellerId: userId,
@@ -95,6 +97,8 @@ export class MarketplaceService {
     });
 
     // Submit for review if seller doesn't have auto-approval
+    // ISSUE: Property 'marketplaceAutoApproval' does not exist on User model
+    // FIX: Add marketplaceAutoApproval field to User model or use UserProfile
     const seller = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { marketplaceAutoApproval: true }
@@ -165,6 +169,8 @@ export class MarketplaceService {
     }
 
     // Create purchase record
+    // ISSUE: Model 'marketplacePurchase' does not exist in Prisma schema
+    // FIX: Create MarketplacePurchase model for tracking sales
     const purchase = await this.prisma.marketplacePurchase.create({
       data: {
         listingId: data.listingId,
@@ -437,6 +443,8 @@ export class MarketplaceService {
     }
 
     // Create review
+    // ISSUE: Model 'marketplaceReview' does not exist in Prisma schema
+    // FIX: Create MarketplaceReview model for listing reviews
     const review = await this.prisma.marketplaceReview.create({
       data: {
         listingId,

@@ -299,6 +299,8 @@ export class NotificationsService {
     userId: string,
     preferences: Partial<NotificationPreferences>,
   ): Promise<NotificationPreferences> {
+    // ISSUE: Model 'userPreferences' referenced but may have different field names
+    // FIX: Verify UserPreferences model has emailNotifications, pushNotifications fields
     const updatedPreferences = await this.prisma.userPreferences.upsert({
       where: { userId },
       update: {
@@ -324,6 +326,8 @@ export class NotificationsService {
   }
 
   async getUserPreferences(userId: string): Promise<NotificationPreferences> {
+    // ISSUE: Model 'userPreferences' may not have all notification-specific fields
+    // FIX: Ensure UserPreferences model includes notification settings fields
     const preferences = await this.prisma.userPreferences.findUnique({
       where: { userId },
     });
@@ -414,6 +418,8 @@ export class NotificationsService {
     const { userId, promptId, title, category, isPublic } = payload;
 
     if (isPublic) {
+      // ISSUE: getFollowers method references 'follow' model that doesn't exist
+      // FIX: Create Follow model or update method to use existing relationships
       // Notify followers
       const followers = await this.getFollowers(userId);
       if (followers.length > 0) {
@@ -787,6 +793,8 @@ export class NotificationsService {
   }
 
   private async getFollowers(userId: string): Promise<any[]> {
+    // ISSUE: Model 'follow' does not exist in Prisma schema
+    // FIX: Create Follow model for user following relationships
     return this.prisma.follow.findMany({
       where: { followingId: userId },
       select: { followerId: true },
@@ -826,6 +834,8 @@ export class NotificationsService {
 
   async sendPushNotification(userId: string, notification: NotificationData): Promise<void> {
     try {
+      // ISSUE: Model 'pushSubscription' does not exist in Prisma schema
+      // FIX: Create PushSubscription model for web push notifications
       const subscriptions = await this.prisma.pushSubscription.findMany({
         where: { userId }
       });
@@ -866,6 +876,8 @@ export class NotificationsService {
           })
         ).catch(err => {
           if (err.statusCode === 410) {
+            // ISSUE: Model 'pushSubscription' does not exist in Prisma schema
+            // FIX: Create PushSubscription model for managing web push subscriptions
             // Subscription expired, remove it
             return this.prisma.pushSubscription.delete({
               where: { id: sub.id }
@@ -910,6 +922,8 @@ export class NotificationsService {
     userAgent?: string;
   }): Promise<void> {
     try {
+      // ISSUE: Model 'pushSubscription' does not exist in Prisma schema
+      // FIX: Create PushSubscription model with endpoint and auth fields
       // Check if subscription already exists
       const existingSubscription = await this.prisma.pushSubscription.findFirst({
         where: {
@@ -930,6 +944,8 @@ export class NotificationsService {
           }
         });
       } else {
+        // ISSUE: Model 'pushSubscription' does not exist in Prisma schema
+        // FIX: Create PushSubscription model with all necessary web push fields
         // Create new subscription
         await this.prisma.pushSubscription.create({
           data: {
@@ -980,6 +996,8 @@ export class NotificationsService {
   }
 
   async getPushSubscriptions(userId: string): Promise<any[]> {
+    // ISSUE: Model 'pushSubscription' does not exist in Prisma schema
+    // FIX: Create PushSubscription model for web push subscription management
     return this.prisma.pushSubscription.findMany({
       where: { userId },
       select: {

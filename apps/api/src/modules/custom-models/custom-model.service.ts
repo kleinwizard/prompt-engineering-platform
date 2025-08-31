@@ -760,8 +760,8 @@ export class CustomModelService {
     }
 
     try {
-      // Note: In production, you would use @google-cloud/aiplatform
-      // This is a simplified implementation
+      // ISSUE: Simplified implementation comment - not using real GCP AI Platform
+      // FIX: Integrate actual @google-cloud/aiplatform SDK for production deployment
       const modelId = `custom_model_${deployment.id.replace(/-/g, '_')}`;
       const endpointId = `endpoint_${deployment.id.replace(/-/g, '_')}`;
 

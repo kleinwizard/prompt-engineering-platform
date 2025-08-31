@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import * as crypto from 'crypto';
 
 interface StatisticalResult {
@@ -17,7 +18,10 @@ interface StatisticalResult {
 export class ABTestingService {
   private readonly logger = new Logger(ABTestingService.name);
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private eventEmitter: EventEmitter2
+  ) {}
 
   async createExperiment(userId: string, dto: any) {
     // Validate variants sum to 100%
@@ -267,7 +271,7 @@ export class ABTestingService {
     if (p < pLow || p > pHigh) {
       // Tail region
       const q = p < pLow ? Math.sqrt(-2 * Math.log(p)) : Math.sqrt(-2 * Math.log(1 - p));
-      const x = (((c[1] * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) * q + c[6];
+      const x = (((c[1] * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5] * q + c[6];
       const y = ((d[1] * q + d[2]) * q + d[3]) * q + d[4];
       return p < pLow ? -(x / y) : x / y;
     } else {
@@ -280,7 +284,7 @@ export class ABTestingService {
     }
   }
 
-  private async declareWinner(experimentId: string, winnerId: string, results: StatisticalResult) {
+  private async declareWinner(experimentId: string, winnerId: string, _results: StatisticalResult) {
     await this.prisma.promptExperiment.update({
       where: { id: experimentId },
       data: {
@@ -292,7 +296,15 @@ export class ABTestingService {
 
     this.logger.log(`Experiment ${experimentId} completed. Winner: ${winnerId}`);
     
-    // TODO: Send notification to experiment owner
+    // Send experiment completion notification
+    this.eventEmitter.emit('experiment.completed', {
+      experimentId,
+      winnerId,
+      userId: (await this.prisma.promptExperiment.findUnique({ 
+        where: { id: experimentId }, 
+        select: { userId: true } 
+      }))?.userId
+    });
   }
 
   async getExperiments(userId: string) {
@@ -308,7 +320,7 @@ export class ABTestingService {
     });
   }
 
-  async getExperiment(experimentId: string, userId: string) {
+  async getExperiment(experimentId: string, _userId: string) {
     const experiment = await this.prisma.promptExperiment.findUnique({
       where: { id: experimentId },
       include: {

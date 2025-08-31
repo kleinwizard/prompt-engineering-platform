@@ -37,22 +37,22 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
   async onModuleInit() {
     // Log query events in development
     if (this.configService.get('NODE_ENV') === 'development') {
-      this.$on('query', (event: any) => {
+      this.$on('query' as never, (event: any) => {
         this.logger.debug(
           `Query: ${event.query} | Params: ${event.params} | Duration: ${event.duration}ms`,
         );
       });
     }
 
-    this.$on('error', (event: any) => {
+    this.$on('error' as never, (event: any) => {
       this.logger.error(`Prisma error: ${event.message}`, event.target);
     });
 
-    this.$on('info', (event: any) => {
+    this.$on('info' as never, (event: any) => {
       this.logger.log(`Prisma info: ${event.message}`);
     });
 
-    this.$on('warn', (event: any) => {
+    this.$on('warn' as never, (event: any) => {
       this.logger.warn(`Prisma warning: ${event.message}`);
     });
 
@@ -66,7 +66,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
   }
 
   async enableShutdownHooks(app: any) {
-    this.$on('beforeExit', async () => {
+    this.$on('beforeExit' as never, async () => {
       await app.close();
     });
   }
@@ -108,6 +108,6 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
   async transaction<T>(
     fn: (prisma: Omit<this, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use'>) => Promise<T>,
   ): Promise<T> {
-    return this.$transaction(fn);
+    return this.$transaction(fn as any) as Promise<T>;
   }
 }

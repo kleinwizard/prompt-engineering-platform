@@ -50,6 +50,8 @@ export class LoginDto {
 export class RefreshTokenDto {
   @ApiProperty()
   @IsString()
+  // ISSUE: Property initialization required in strict mode
+  // FIX: Add constructor or definite assignment assertion (!)
   refreshToken: string;
 }
 

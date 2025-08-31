@@ -12,6 +12,7 @@ import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { PrismaService } from '../../database/prisma.service';
 import { UsersService } from '../users/users.service';
+import { EmailService } from '../email/email.service';
 import { RegisterDto, LoginDto, RefreshTokenDto, ResetPasswordDto, VerifyEmailDto } from './dto';
 import { JwtPayload, AuthTokens, UserWithProfile } from './interfaces';
 
@@ -25,6 +26,7 @@ export class AuthService {
     private usersService: UsersService,
     private jwtService: JwtService,
     private configService: ConfigService,
+    private emailService: EmailService,
   ) {}
 
   async register(registerDto: RegisterDto): Promise<{ user: UserWithProfile; tokens: AuthTokens }> {
@@ -242,8 +244,18 @@ export class AuthService {
       },
     });
 
-    // TODO: Send email with reset link
-    this.logger.log(`Password reset requested for user ${user.id}`);
+    // Send password reset email
+    await this.emailService.sendTemplateEmail({
+      to: user.email,
+      template: 'password-reset',
+      context: {
+        firstName: user.firstName || user.username,
+        resetToken,
+        resetUrl: `${this.configService.get('WEB_URL')}/auth/reset-password?token=${resetToken}`,
+        expiresIn: '1 hour'
+      }
+    });
+    this.logger.log(`Password reset email sent to user ${user.id}`);
   }
 
   async resetPassword(resetPasswordDto: ResetPasswordDto): Promise<void> {
@@ -264,7 +276,6 @@ export class AuthService {
       throw new BadRequestException('Invalid or expired reset token');
     }
 
-    // Check if token is expired
     const resetExpires = (user.additionalContext as any)?.passwordResetExpires;
     if (!resetExpires || new Date(resetExpires) < new Date()) {
       throw new BadRequestException('Reset token has expired');
@@ -278,6 +289,7 @@ export class AuthService {
       where: { id: user.id },
       data: {
         passwordHash,
+        // Store password reset token in user context  
         additionalContext: {
           ...((user.additionalContext as any) || {}),
           passwordResetToken: null,
@@ -315,6 +327,7 @@ export class AuthService {
       where: { id: user.id },
       data: {
         emailVerified: new Date(),
+        // Store email verification token in user context
         additionalContext: {
           ...((user.additionalContext as any) || {}),
           emailVerificationToken: null,
@@ -423,8 +436,26 @@ export class AuthService {
   }
 
   private async isAccountLocked(userId: string): Promise<boolean> {
-    // Implementation would check for account locks based on security events
-    // This is a simplified version
+    // Check for recent failed login attempts
+    const recentFailures = await this.prisma.analyticsEvent.count({
+      where: {
+        userId,
+        event: 'auth.login_failed',
+        createdAt: {
+          gte: new Date(Date.now() - 15 * 60 * 1000), // Last 15 minutes
+        },
+      },
+    });
+
+    // Lock account after 5 failed attempts in 15 minutes
+    if (recentFailures >= 5) {
+      await this.logSecurityEvent(userId, 'account.locked', {
+        reason: 'too_many_failed_attempts',
+        failureCount: recentFailures,
+      });
+      return true;
+    }
+
     return false;
   }
 

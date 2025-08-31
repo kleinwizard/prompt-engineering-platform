@@ -1,6 +1,6 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
-import { LLMClientService } from '../llm-client/llm-client.service';
+import { LLMClientService } from '@llm-client/llm-client.service';
 
 interface ExecutionContext {
   variables: Record<string, any>;
@@ -8,7 +8,7 @@ interface ExecutionContext {
   executedNodes: Set<string>;
 }
 
-interface NodeExecution {
+export interface NodeExecution {
   nodeId: string;
   inputs: Record<string, any>;
   outputs: Record<string, any>;
@@ -26,6 +26,8 @@ export class WorkflowExecutorService {
   ) {}
 
   async executeWorkflow(workflowId: string, inputs: Record<string, any>, userId: string) {
+    // ISSUE: Models 'promptWorkflow', 'workflowNode', 'workflowEdge' may not exist in Prisma schema
+    // FIX: Verify and create Workflow, WorkflowNode, WorkflowEdge models
     const workflow = await this.prisma.promptWorkflow.findUnique({
       where: { id: workflowId },
       include: { 
@@ -39,6 +41,8 @@ export class WorkflowExecutorService {
     }
 
     // Create execution record
+    // ISSUE: Model 'workflowExecution' may not exist in Prisma schema
+    // FIX: Create WorkflowExecution model with required fields
     const execution = await this.prisma.workflowExecution.create({
       data: {
         workflowId,
@@ -133,7 +137,7 @@ export class WorkflowExecutorService {
   }
 
   private async executeNode(node: any, context: ExecutionContext): Promise<void> {
-    const nodeData = node.data;
+    // const nodeData = node.data;
 
     switch (node.type) {
       case 'prompt':
@@ -194,7 +198,8 @@ export class WorkflowExecutorService {
     const { condition } = node.data;
     
     try {
-      // Create safe evaluation function
+      // ISSUE: Using eval-like Function constructor - potential security risk
+      // FIX: Use sandboxed evaluation library or predefined condition templates
       const conditionFunction = new Function('vars', 'outputs', `
         "use strict";
         ${condition}
@@ -207,7 +212,7 @@ export class WorkflowExecutorService {
         context.variables[node.data.outputVariable] = Boolean(result);
       }
     } catch (error) {
-      throw new Error(`Condition evaluation failed: ${error.message}`);
+      throw new Error(`Condition evaluation failed: ${(error as Error).message}`);
     }
   }
 
@@ -216,6 +221,8 @@ export class WorkflowExecutorService {
     const inputValue = context.variables[inputVariable] || context.outputs[inputVariable];
 
     try {
+      // ISSUE: Using eval-like Function constructor - potential security risk
+      // FIX: Use sandboxed evaluation library or predefined transform functions
       const transformFunction = new Function('input', 'vars', 'outputs', `
         "use strict";
         ${transformCode}
@@ -228,7 +235,7 @@ export class WorkflowExecutorService {
         context.variables[node.data.outputVariable] = result;
       }
     } catch (error) {
-      throw new Error(`Transform execution failed: ${error.message}`);
+      throw new Error(`Transform execution failed: ${(error as Error).message}`);
     }
   }
 
@@ -271,7 +278,7 @@ export class WorkflowExecutorService {
 
   private async executeMergeNode(node: any, context: ExecutionContext): Promise<void> {
     const { inputNodes, mergeStrategy = 'concatenate' } = node.data;
-    const inputs = inputNodes.map(nodeId => context.outputs[nodeId]).filter(Boolean);
+    const inputs = inputNodes.map((nodeId: string) => context.outputs[nodeId]).filter(Boolean);
 
     let result;
     
@@ -285,7 +292,7 @@ export class WorkflowExecutorService {
         break;
         
       case 'object':
-        result = inputNodes.reduce((acc, nodeId, index) => {
+        result = inputNodes.reduce((acc: any, nodeId: string, index: number) => {
           acc[nodeId] = inputs[index];
           return acc;
         }, {});

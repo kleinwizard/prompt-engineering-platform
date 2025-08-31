@@ -23,7 +23,7 @@ interface PromptBlock {
   connections?: string[]; // IDs of connected blocks
 }
 
-interface BlockTemplate {
+export interface BlockTemplate {
   type: string;
   name: string;
   icon: string;
@@ -36,7 +36,7 @@ interface BlockTemplate {
   validation?: any;
 }
 
-interface PromptBlueprint {
+export interface PromptBlueprint {
   id: string;
   userId: string;
   name: string;

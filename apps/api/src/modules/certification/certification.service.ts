@@ -9,7 +9,7 @@ interface CertificationRequirement {
   description: string;
 }
 
-interface CertificationProgress {
+export interface CertificationProgress {
   completed: boolean;
   completionPercentage: number;
   requirements: {
@@ -445,15 +445,19 @@ export class CertificationService {
       }),
       
       // Average quality score from ratings
+      // ISSUE: Model 'promptRating' does not exist in Prisma schema
+      // FIX: Create PromptRating model or use existing Rating/Like model
       this.prisma.promptRating.aggregate({
         where: { prompt: { userId } },
         _avg: { rating: true }
       }),
       
-      // Peer reviews given (placeholder - would need review system)
+      // ISSUE: Peer review system not implemented - hardcoded 0
+      // FIX: Create PeerReview model and implement review functionality
       Promise.resolve(0),
       
-      // Peer reviews received (placeholder - would need review system)
+      // ISSUE: Peer review system not implemented - hardcoded 0
+      // FIX: Create PeerReview model and implement review functionality
       Promise.resolve(0),
       
       // Workflows created
@@ -461,7 +465,8 @@ export class CertificationService {
         where: { userId }
       }),
       
-      // Community contributions (comments, forks, etc.)
+      // ISSUE: Community contributions hardcoded to 0 - not querying real data
+      // FIX: Query actual comments, forks, likes from community module
       Promise.resolve(0), // Placeholder
       
       // User account info

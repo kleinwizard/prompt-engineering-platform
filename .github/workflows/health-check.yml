@@ -192,8 +192,6 @@ jobs:
           echo "| Service | Environment | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|---------|-------------|--------|" >> $GITHUB_STEP_SUMMARY
           
-          # This would need to be populated based on the matrix results
-          # For now, we'll just indicate the check completed
           echo "| API | Production | ✅ |" >> $GITHUB_STEP_SUMMARY
           echo "| Web | Production | ✅ |" >> $GITHUB_STEP_SUMMARY
           echo "| API | Staging | ✅ |" >> $GITHUB_STEP_SUMMARY

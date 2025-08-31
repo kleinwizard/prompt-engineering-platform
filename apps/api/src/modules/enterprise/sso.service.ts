@@ -233,7 +233,7 @@ export class SSOService {
   }
 
   async getSSOConfiguration(tenantId: string, type: 'saml' | 'oidc' | 'ldap') {
-    const config = await this.prisma.ssoConfiguration.findFirst({
+    const config = await this.prisma.sSOConfiguration.findFirst({
       where: {
         tenantId,
         type,
@@ -510,6 +510,8 @@ export class SSOService {
   }
 
   private async getUserGroups(client: any, config: LDAPConfig, userDN: string): Promise<string[]> {
+    // ISSUE: Early return empty array when group config missing
+    // ISSUE: May need to handle partial LDAP configurations differently
     if (!config.groupSearchBase || !config.groupSearchFilter) {
       return [];
     }

@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { ConfigService } from '@nestjs/config';
 
-interface SecurityThreat {
+export interface SecurityThreat {
   type: string;
   severity: 'low' | 'medium' | 'high' | 'critical';
   pattern?: string;
@@ -27,7 +27,7 @@ interface SecurityScanResult {
   complianceIssues: ComplianceIssue[];
 }
 
-interface ComplianceIssue {
+export interface ComplianceIssue {
   framework: string; // GDPR, HIPAA, PCI, etc.
   violation: string;
   severity: 'low' | 'medium' | 'high' | 'critical';

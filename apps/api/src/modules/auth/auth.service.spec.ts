@@ -68,6 +68,8 @@ describe('AuthService', () => {
         isActive: true,
       };
 
+      // ISSUE: Prisma mock methods don't exist - mockResolvedValue not available  
+      // FIX: Update test setup to properly mock Prisma client methods
       prismaService.user.findUnique.mockResolvedValue(mockUser);
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
 
@@ -117,6 +119,8 @@ describe('AuthService', () => {
         .mockResolvedValueOnce('access-token')
         .mockResolvedValueOnce('refresh-token');
 
+      // ISSUE: Model 'refreshToken' does not exist in Prisma schema
+      // FIX: Create RefreshToken model or update test to use existing model
       prismaService.refreshToken.create.mockResolvedValue({
         id: '1',
         token: 'refresh-token',

@@ -116,6 +116,8 @@ export class StorageService {
     const hash = crypto.createHash('sha256').update(fileBuffer).digest('hex');
     
     // Check for existing file with same hash
+    // ISSUE: Model 'file' may not exist in Prisma schema
+    // FIX: Create File model with hash, bucket, key, metadata fields
     const existingFile = await this.prisma.file.findUnique({
       where: { hash },
     });
@@ -547,6 +549,8 @@ export class StorageService {
     }
 
     // Check for cloud storage configuration
+    // ISSUE: Cloud storage providers may not be configured in development
+    // FIX: Add proper error handling and configuration validation
     const storageProvider = this.configService.get('STORAGE_PROVIDER', 'local');
     
     if (storageProvider === 'aws') {
@@ -558,6 +562,8 @@ export class StorageService {
     }
 
     // Fallback to local signed URL for development
+    // ISSUE: Using JWT_SECRET for file signing - not ideal separation of concerns
+    // FIX: Create dedicated FILE_SIGNING_SECRET configuration
     const expires = Math.floor(Date.now() / 1000) + expiresIn;
     const signature = crypto
       .createHmac('sha256', this.configService.get('JWT_SECRET', 'fallback-secret'))

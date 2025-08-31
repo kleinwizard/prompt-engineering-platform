@@ -1,5 +1,5 @@
 export const configuration = () => ({
-  port: parseInt(process.env.PORT, 10) || 3000,
+  port: parseInt(process.env.PORT || '3000', 10),
   
   // Database
   database: {
@@ -10,22 +10,43 @@ export const configuration = () => ({
   // Redis
   redis: {
     host: process.env.REDIS_HOST || 'localhost',
-    port: parseInt(process.env.REDIS_PORT, 10) || 6379,
+    port: parseInt(process.env.REDIS_PORT || '6379', 10),
     password: process.env.REDIS_PASSWORD,
-    db: parseInt(process.env.REDIS_DB, 10) || 0,
+    db: parseInt(process.env.REDIS_DB || '0', 10),
   },
 
   // JWT
   jwt: {
-    secret: process.env.JWT_SECRET || 'development-secret-key',
+    secret: process.env.NODE_ENV === 'production' 
+      ? (() => {
+          if (!process.env.JWT_SECRET) {
+            throw new Error('JWT_SECRET is required in production environment');
+          }
+          return process.env.JWT_SECRET;
+        })()
+      : process.env.JWT_SECRET || 'development-secret-key',
     expiresIn: process.env.JWT_EXPIRES_IN || '15m',
-    refreshSecret: process.env.JWT_REFRESH_SECRET || 'development-refresh-secret',
+    refreshSecret: process.env.NODE_ENV === 'production'
+      ? (() => {
+          if (!process.env.JWT_REFRESH_SECRET) {
+            throw new Error('JWT_REFRESH_SECRET is required in production environment');
+          }
+          return process.env.JWT_REFRESH_SECRET;
+        })()
+      : process.env.JWT_REFRESH_SECRET || 'development-refresh-secret',
     refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
   },
 
   // Encryption
   encryption: {
-    key: process.env.ENCRYPTION_KEY,
+    key: process.env.NODE_ENV === 'production'
+      ? (() => {
+          if (!process.env.ENCRYPTION_KEY) {
+            throw new Error('ENCRYPTION_KEY is required in production environment');
+          }
+          return process.env.ENCRYPTION_KEY;
+        })()
+      : process.env.ENCRYPTION_KEY || require('crypto').randomBytes(32).toString('hex'),
     algorithm: 'aes-256-gcm',
   },
 
@@ -37,9 +58,9 @@ export const configuration = () => ({
 
   // Rate limiting
   throttle: {
-    shortLimit: parseInt(process.env.THROTTLE_SHORT_LIMIT, 10) || 10,
-    mediumLimit: parseInt(process.env.THROTTLE_MEDIUM_LIMIT, 10) || 50,
-    longLimit: parseInt(process.env.THROTTLE_LONG_LIMIT, 10) || 100,
+    shortLimit: parseInt(process.env.THROTTLE_SHORT_LIMIT || '10', 10),
+    mediumLimit: parseInt(process.env.THROTTLE_MEDIUM_LIMIT || '50', 10),
+    longLimit: parseInt(process.env.THROTTLE_LONG_LIMIT || '100', 10),
   },
 
   // File storage
@@ -67,7 +88,7 @@ export const configuration = () => ({
     provider: process.env.EMAIL_PROVIDER || 'smtp', // 'smtp' | 'sendgrid' | 'ses'
     smtp: {
       host: process.env.SMTP_HOST || 'localhost',
-      port: parseInt(process.env.SMTP_PORT, 10) || 587,
+      port: parseInt(process.env.SMTP_PORT || '587', 10),
       secure: process.env.SMTP_SECURE === 'true',
       auth: {
         user: process.env.SMTP_USER,
@@ -139,7 +160,7 @@ export const configuration = () => ({
     },
     prometheus: {
       enabled: process.env.PROMETHEUS_ENABLED === 'true',
-      port: parseInt(process.env.PROMETHEUS_PORT, 10) || 9090,
+      port: parseInt(process.env.PROMETHEUS_PORT || '9090', 10),
     },
   },
 

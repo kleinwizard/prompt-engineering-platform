@@ -15,7 +15,7 @@ interface BranchData {
   description?: string;
 }
 
-interface MergeResult {
+export interface MergeResult {
   success: boolean;
   commitId?: string;
   conflicts?: ConflictInfo[];
@@ -32,7 +32,7 @@ interface ConflictInfo {
   suggestedResolution: string;
 }
 
-interface Diff {
+export interface Diff {
   additions: DiffHunk[];
   deletions: DiffHunk[];
   modifications: DiffHunk[];
@@ -44,7 +44,7 @@ interface Diff {
   };
 }
 
-interface DiffHunk {
+export interface DiffHunk {
   oldStart: number;
   oldLines: number;
   newStart: number;
@@ -52,13 +52,13 @@ interface DiffHunk {
   lines: DiffLine[];
 }
 
-interface DiffLine {
+export interface DiffLine {
   type: 'added' | 'deleted' | 'unchanged' | 'modified';
   content: string;
   lineNumber: number;
 }
 
-interface BlameInfo {
+export interface BlameInfo {
   line: number;
   content: string;
   commit: {
@@ -87,6 +87,8 @@ export class GitService {
   ) {
     this.logger.log(`Creating repository: ${name} for user ${userId}`);
 
+    // ISSUE: Models 'promptRepository' and 'promptBranch' may not exist in Prisma schema
+    // FIX: Create PromptRepository and PromptBranch models for version control system
     const repo = await this.prisma.promptRepository.create({
       data: {
         name,
@@ -230,6 +232,8 @@ export class GitService {
     });
 
     // Create commit
+    // ISSUE: Model 'promptCommit' may not exist in Prisma schema
+    // FIX: Create PromptCommit model with hash, parentIds, diff fields
     const commit = await this.prisma.promptCommit.create({
       data: {
         repositoryId: repoId,
@@ -420,6 +424,8 @@ export class GitService {
     }
 
     // Create tag
+    // ISSUE: Model 'promptTag' may not exist in Prisma schema
+    // FIX: Create PromptTag model for tagging commits
     const tag = await this.prisma.promptTag.create({
       data: {
         repositoryId: repoId,

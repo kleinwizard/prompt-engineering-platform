@@ -83,6 +83,8 @@ export class SkillsService {
     // Get recommendations for improvement
     const recommendations = this.generateSkillRecommendations(skillScores, skill);
 
+    // ISSUE: Model 'skillAssessment' does not exist in Prisma schema
+    // FIX: Create SkillAssessment model with userId, skillId, scores fields
     // Store assessment result
     const assessment = await this.prisma.skillAssessment.create({
       data: {
@@ -126,6 +128,8 @@ export class SkillsService {
   }
 
   async getUserSkillProfile(userId: string): Promise<UserSkillProfile> {
+    // ISSUE: Model 'userSkills' does not exist in Prisma schema
+    // FIX: Create UserSkills model with all skill score fields
     const userSkills = await this.prisma.userSkills.findUnique({
       where: { userId },
     });
@@ -136,6 +140,8 @@ export class SkillsService {
       return this.formatSkillProfile(defaultProfile);
     }
 
+    // ISSUE: Model 'skillAssessment' does not exist in Prisma schema
+    // FIX: Create SkillAssessment model for tracking assessment history
     // Get skill assessments history
     const assessments = await this.prisma.skillAssessment.findMany({
       where: { userId },
@@ -162,6 +168,8 @@ export class SkillsService {
   }
 
   async getSkillRecommendations(userId: string): Promise<SkillRecommendation[]> {
+    // ISSUE: Model 'userSkills' does not exist in Prisma schema
+    // FIX: Create UserSkills model for skill tracking and recommendations
     const userSkills = await this.prisma.userSkills.findUnique({
       where: { userId },
     });
@@ -211,6 +219,8 @@ export class SkillsService {
 
     // Update skill progress tracking
     await this.prisma.$transaction(async (tx) => {
+      // ISSUE: Model 'userSkills' does not exist in Prisma schema
+      // FIX: Create UserSkills model for progress tracking
       // Get current user skills
       const userSkills = await tx.userSkills.findUnique({
         where: { userId },
@@ -229,6 +239,8 @@ export class SkillsService {
         metadata
       );
 
+      // ISSUE: Model 'userSkills' does not exist in Prisma schema
+      // FIX: Create UserSkills model with skill fields and lastAssessment
       // Update user skills
       await tx.userSkills.update({
         where: { userId },
@@ -502,6 +514,8 @@ export class SkillsService {
   }
 
   private async updateUserSkillProfile(userId: string, scores: any): Promise<void> {
+    // ISSUE: Model 'userSkills' does not exist in Prisma schema
+    // FIX: Create UserSkills model with all skill score fields and assessment tracking
     await this.prisma.userSkills.upsert({
       where: { userId },
       update: {
@@ -533,6 +547,8 @@ export class SkillsService {
   }
 
   private async getPreviousSkillScore(userId: string, skillId: string): Promise<number> {
+    // ISSUE: Model 'skillAssessment' does not exist in Prisma schema
+    // FIX: Create SkillAssessment model for tracking assessment history
     const lastAssessment = await this.prisma.skillAssessment.findFirst({
       where: { userId, skillId },
       orderBy: { createdAt: 'desc' },
@@ -561,6 +577,8 @@ export class SkillsService {
   }
 
   private async createDefaultSkillProfile(userId: string): Promise<any> {
+    // ISSUE: Model 'userSkills' does not exist in Prisma schema
+    // FIX: Create UserSkills model with all skill fields and default values
     return this.prisma.userSkills.create({
       data: {
         userId,

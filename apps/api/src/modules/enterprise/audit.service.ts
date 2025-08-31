@@ -19,7 +19,7 @@ interface AuditEvent {
   timestamp?: Date;
 }
 
-interface ComplianceReport {
+export interface ComplianceReport {
   id: string;
   type: 'gdpr' | 'hipaa' | 'sox' | 'iso27001' | 'pci' | 'custom';
   period: {
@@ -45,7 +45,7 @@ interface ComplianceFinding {
   evidence: string[];
 }
 
-interface DataRetentionPolicy {
+export interface DataRetentionPolicy {
   tenantId: string;
   resourceType: string;
   retentionPeriod: number; // days
@@ -54,7 +54,7 @@ interface DataRetentionPolicy {
   isActive: boolean;
 }
 
-interface AuditQuery {
+export interface AuditQuery {
   tenantId?: string;
   userId?: string;
   action?: string;

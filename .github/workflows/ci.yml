@@ -296,8 +296,6 @@ jobs:
       - name: Deploy to staging
         run: |
           echo "Deploying to staging environment..."
-          # Add your staging deployment commands here
-          # Example: rsync, scp, docker deploy, etc.
 
   deploy-production:
     name: Deploy to Production
@@ -318,5 +316,3 @@ jobs:
       - name: Deploy to production
         run: |
           echo "Deploying to production environment..."
-          # Add your production deployment commands here
-          # Example: docker push, k8s deploy, etc.

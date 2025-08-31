@@ -290,6 +290,8 @@ export class LearningService {
 
     // Check prerequisites
     if (path.prerequisites.length > 0 && userId) {
+      // ISSUE: Model 'userSkills' does not exist in Prisma schema
+      // FIX: Create UserSkills model or use UserProfile model for skill tracking
       const userSkills = await this.prisma.userSkills.findUnique({
         where: { userId },
       });
@@ -300,6 +302,8 @@ export class LearningService {
       }
     }
 
+    // ISSUE: Model 'userLearningPath' does not exist in Prisma schema
+    // FIX: Create UserLearningPath model with userId_pathId unique constraint
     // Check if already enrolled
     const existingEnrollment = await this.prisma.userLearningPath.findUnique({
       where: {
@@ -312,6 +316,8 @@ export class LearningService {
     }
 
     await this.prisma.$transaction(async (tx) => {
+      // ISSUE: Model 'userLearningPath' does not exist in Prisma schema
+      // FIX: Create UserLearningPath model with enrollment tracking fields
       // Create enrollment
       await tx.userLearningPath.create({
         data: {
@@ -322,6 +328,8 @@ export class LearningService {
         },
       });
 
+      // ISSUE: Model 'lessonProgress' does not exist in Prisma schema
+      // FIX: Create LessonProgress model with userId_lessonId unique constraint
       // Initialize lesson progress records
       for (const lesson of path.lessons) {
         await tx.lessonProgress.create({
@@ -395,6 +403,8 @@ export class LearningService {
       },
     });
 
+    // ISSUE: Model 'userLearningPath' does not exist in Prisma schema
+    // FIX: Create UserLearningPath model for enrollment tracking
     // Create progress records for enrolled users
     const enrolledUsers = await this.prisma.userLearningPath.findMany({
       where: { pathId },
@@ -402,6 +412,8 @@ export class LearningService {
     });
 
     if (enrolledUsers.length > 0) {
+      // ISSUE: Model 'lessonProgress' does not exist in Prisma schema
+      // FIX: Create LessonProgress model for tracking user lesson completion
       await this.prisma.lessonProgress.createMany({
         data: enrolledUsers.map(user => ({
           userId: user.userId,
@@ -446,6 +458,8 @@ export class LearningService {
 
     // Check if user is enrolled in the path
     if (userId) {
+      // ISSUE: Model 'userLearningPath' does not exist in Prisma schema
+      // FIX: Create UserLearningPath model with composite key userId_pathId
       const enrollment = await this.prisma.userLearningPath.findUnique({
         where: {
           userId_pathId: { userId, pathId: lesson.path.id },

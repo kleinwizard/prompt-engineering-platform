@@ -1,5 +1,5 @@
 import { Controller, Get, Post, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { DNAAnalysisService } from './dna-analysis.service';
 
 interface AnalyzePromptDto {

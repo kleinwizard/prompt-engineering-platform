@@ -100,6 +100,8 @@ export class CommunityService {
         profile: true,
         preferences: true,
         skills: true,
+        // ISSUE: Model 'userBadge' relationship may not exist or have proper fields
+        // FIX: Create UserBadge model with userId, badgeId, earnedAt fields
         badges: {
           include: { badge: true },
           orderBy: { earnedAt: 'desc' },
@@ -289,6 +291,7 @@ export class CommunityService {
   }
 
   async getUserFollowing(userId: string, type: 'followers' | 'following'): Promise<UserFollowing[]> {
+    // Get follow relationships
     const relationships = await this.prisma.follow.findMany({
       where: type === 'followers' 
         ? { followingId: userId }
@@ -644,6 +647,7 @@ export class CommunityService {
       throw new BadRequestException('Already reported this content');
     }
 
+    // Create report record
     const report = await this.prisma.report.create({
       data: {
         reporterId: userId,
@@ -656,6 +660,7 @@ export class CommunityService {
       },
     });
 
+    // Get reports for moderation
     // Check if content should be auto-moderated
     const reportCount = await this.prisma.report.count({
       where: {

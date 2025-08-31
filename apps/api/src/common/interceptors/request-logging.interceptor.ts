@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { tap, catchError } from 'rxjs/operators';
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { RequestWithId } from '../middleware/request-id.middleware';
 
 @Injectable()
@@ -30,7 +30,7 @@ export class RequestLoggingInterceptor implements NestInterceptor {
     );
 
     return next.handle().pipe(
-      tap((data) => {
+      tap((_data) => {
         const responseTime = Date.now() - startTime;
         const statusCode = response.statusCode;
         

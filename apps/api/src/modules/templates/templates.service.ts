@@ -75,6 +75,8 @@ export class TemplatesService {
             },
           },
           likes: true,
+          // ISSUE: Model 'templateRating' referenced but may not exist in Prisma schema
+          // FIX: Create TemplateRating model or use alternative rating system
           ratings: {
             include: {
               user: {
@@ -92,6 +94,8 @@ export class TemplatesService {
         },
       });
 
+      // ISSUE: Method 'indexTemplate' may not exist on SearchService
+      // FIX: Implement indexTemplate method or use generic indexDocument method
       // Index template for search
       await this.searchService.indexTemplate(newTemplate);
 
@@ -248,6 +252,8 @@ export class TemplatesService {
         });
       }
 
+      // ISSUE: Method 'updateTemplateIndex' may not exist on SearchService
+      // FIX: Implement updateTemplateIndex method or use updateDocument method
       // Update search index
       await this.searchService.updateTemplateIndex(updatedTemplate);
 
@@ -514,6 +520,8 @@ export class TemplatesService {
     }
 
     await this.prisma.$transaction(async (tx) => {
+      // ISSUE: Model 'templateRating' does not exist in Prisma schema
+      // FIX: Create TemplateRating model with userId_templateId unique constraint
       // Upsert rating
       await tx.templateRating.upsert({
         where: {
@@ -523,6 +531,8 @@ export class TemplatesService {
         create: { userId, templateId, rating, review },
       });
 
+      // ISSUE: Model 'templateRating' does not exist in Prisma schema
+      // FIX: Create TemplateRating model or use alternative rating approach
       // Recalculate template rating
       const ratings = await tx.templateRating.findMany({
         where: { templateId },
@@ -660,6 +670,8 @@ export class TemplatesService {
 
     await this.prisma.$transaction(async (tx) => {
       // Delete related data
+      // ISSUE: Model 'templateRating' does not exist in Prisma schema
+      // FIX: Create TemplateRating model or remove this deletion
       await tx.templateRating.deleteMany({ where: { templateId } });
       await tx.like.deleteMany({ where: { templateId } });
       await tx.comment.deleteMany({ where: { templateId } });
@@ -676,6 +688,8 @@ export class TemplatesService {
       });
     });
 
+    // ISSUE: Method 'removeTemplateFromIndex' may not exist on SearchService
+    // FIX: Implement removeTemplateFromIndex method or use removeDocument method
     // Remove from search index
     await this.searchService.removeTemplateFromIndex(templateId);
 

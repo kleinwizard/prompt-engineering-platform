@@ -40,8 +40,9 @@ export class AnthropicFineTuningProvider {
 
   async startFineTuning(request: FineTuningRequest): Promise<{ id: string }> {
     try {
-      // Note: Anthropic doesn't currently support public fine-tuning API
-      // This is a placeholder implementation for when it becomes available
+      // ISSUE: Anthropic doesn't currently support public fine-tuning API
+      // ISSUE: This is a placeholder implementation calling non-existent endpoint
+      // FIX: Either disable this provider or implement mock/simulation mode
       
       const response = await axios.post(`${this.baseUrl}/fine-tuning/jobs`, {
         model: request.model,
@@ -174,7 +175,9 @@ export class AnthropicFineTuningProvider {
   }
 
   private estimateCost(job: any): number {
-    // Anthropic pricing estimation (placeholder)
+    // ISSUE: Placeholder pricing with hardcoded rate - not real Anthropic pricing
+    // ISSUE: Hardcoded default token count (100000)
+    // FIX: Use actual Anthropic pricing API or configuration-based rates
     const baseRate = 0.012; // Estimated rate
     const tokens = job.training_tokens || 100000;
     

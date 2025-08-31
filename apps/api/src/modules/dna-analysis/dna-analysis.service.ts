@@ -2,7 +2,7 @@ import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import * as crypto from 'crypto';
 
-interface PromptDNA {
+export interface PromptDNA {
   fingerprint: string;
   generation: number;
   evolutionScore: number;
@@ -418,7 +418,8 @@ export class DNAAnalysisService {
   }
 
   private async findGeneticMatches(fingerprint: string, promptText: string, threshold = 0.7): Promise<GeneticMatch[]> {
-    // In production, this would search the database for similar prompts
+    // ISSUE: Model 'promptDNAAnalysis' does not exist in Prisma schema
+    // FIX: Create PromptDNAAnalysis model with fingerprint, similarity fields
     const candidates = await this.prisma.promptDNAAnalysis.findMany({
       where: {
         fingerprint: { not: fingerprint }
